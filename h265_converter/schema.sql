@@ -1,0 +1,7 @@
+CREATE TABLE queue (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    path TEXT NOT NULL,
+    filename TEXT UNIQUE NOT NULL,
+    convert TEXT DEFAULT "skip" NOT NULL,
+    status TEXT DEFAULT "active" NOT NULL
+);

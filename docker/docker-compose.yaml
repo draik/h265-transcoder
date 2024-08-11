@@ -1,0 +1,11 @@
+---
+
+services:
+  converter:
+    image: draikx21/h265_converter
+    restart: unless-stopped
+    environment:
+      BATCH: 0
+      DEBUG: "False"
+    volumes:
+      - mnt:/mnt
