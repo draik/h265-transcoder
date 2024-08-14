@@ -4,6 +4,7 @@ import logging
 import sqlite3
 
 logger = logging.getLogger(__name__)
+sqlite_db = "/app/h265_converter/queue.db"
 
 
 class DatabaseInterface:
@@ -16,7 +17,7 @@ class DatabaseInterface:
     ):
         """Create the SQLite database."""
         logger.debug("Initializing DatabaseInterface...")
-        self.db_file = "queue.db"
+        self.db_file = sqlite_db
 
         self.db_connect = None
         self.db_cursor = None

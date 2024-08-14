@@ -5,41 +5,45 @@ Scan a directory for video files that need to be converted to h.265 HVC1 MP4 for
 
 * MKV (convert) - All MKV will be converted to MP4 even if it's h.265 HVC1
 * MP4 (convert) - Convert MP4 if not h.265 HVC1
-* MP4 (skipped) - MP4 is already h.265 HVC1
+* MP4 (skip) - MP4 is already h.265 HVC1
 
-***CAVEAT*** - the conversion is for **ONE** video stream (track 0) and **ONE** audio stream (track 1). If the file has multiple audio tracks (i.e.: anime dubs), it may choose the wrong language, as there is no standard for ordering tracks. Furthermore, as this will only use those two tracks, all others will be ignored, such as subtitles. Extract any subtitles with `mkvextract` prior to conversion as original files are removed after a successful conversion.
+### CAVEAT
+The conversion is for **ONE** video stream (video track 0, usually track 0) and **ONE** audio stream (audio track 0, usually track 1). If the file has multiple audio tracks (i.e.: anime dubs), it may choose the wrong language, as there is no standard for ordering tracks. Furthermore, as this will only use those two tracks, all others will be ignored, including subtitles. Extract any subtitles with `mkvextract` prior to conversion as original files can be deleted after a successful conversion (see "Environment Variables" below).
 
 ## How It Works
-Once the container starts, it scans the mounted volume for video files to convert and update metadata. If no files are found, the container will shut itself down. The found files will be inserted into the SQLite database, and queued for processing. After scans are complete, the conversion will begin for files with *convert* set to "Y" until the queue is complete. Conversion results will be *failed* or *done*. Failed conversions will be processed again after the *convert* batch is complete.  
+Once the container starts, it scans the mounted volume for video files to convert and update metadata. If no files are found, or nothing to convert, the container will shut itself down. The found files will be inserted into the SQLite database, and queued for processing. After scans are complete, the conversion will begin for files with a *convert* value. Conversion results will be *failed* or *done*.  
 
-After a completed conversion queue, all files will have the *Title* metadata updated to match the filename (without extension), and the *Comment* tag removed.
+During the conversion process, the output file will have the *Title* metadata updated to match the filename (without extension), and the *Comment* tag removed.
 
 ## Docker
 
 ### Build Image
 Build the docker image using the following command:
 
-`docker build -t draikx21/h265_converter .`
+`docker build -f docker/Dockerfile [-t <image_name:tag>] .`
 
 ### Run a Container
-The container will need a mounted volume to "/mnt" which contains video files to convert, or it will terminate immediately.
+The container will need a local directory mounted to "/mnt" in the container.
 
-`docker run -v /path/to/videos:/mnt draikx21/h265_coverter`
+`docker run -v /path/to/videos:/mnt <image_name:tag>`
 
 ### Environment Variables
 
-***BATCH*** (default = 0) is for the amount of video files to convert. The default value is "0" (zero) which is unlimited, and will go through all of the video files it found in the scan. The list depends on the result order from the `os.walk` scan, as the limit is for the top batch count.
+***BATCH*** (default = 0)  
+This is for the amount of video files to convert. The default value is "0" (zero) which is unlimited, and will go through all of the video files it found in the scan. The list depends on the result order from the `os.walk` scan, as the limit is for the top batch count.
 
-:exclamation: Be mindful of the resource usage, and overworking the machine for long periods of video conversions.
+:exclamation: Be mindful of the resource usage, and overworking your machine for long periods of video conversions.
 
-***CONVERT*** (default = "True") will begin a conversion task. If set to a "False" value, it will only scan the files, and update the metadata on MP4 files. 
+***DEBUG***  (default = "False")  
+Pertains to the log file, not stdout logging. It will log all INFO-level and higher messages. Set the value to "True" to enable DEBUG-level stdout logging. 
 
-***DEBUG*** (default = "False") pertains to the log file. It will log all INFO-level and higher messages. For more verbosity, setting the value to "True" will enable DEBUG-level logging. 
+***DELETE*** (default = "False")  
+Once a video file has been successfully converted to h.265, the original file can be removed. Set value to "True" to enable this action.
 
-### Reading the Docker Logs
+### Reading the Docker Logs (stdout logging)
 The console output is setup with DEBUG-level logging. While the Docker container is running, the console will display the current actions, but all console output is available in the Docker logs, even after it shuts down (and container is not removed). Read the Docker logs with the following command:
 
-`docker logs <image_name>`
+`docker logs <container_name>`
 
 ### Volumes
 The mount to '/mnt' is the scanned directory. It is set by the *volume* local directory value in the **docker-compose.yaml** file. Ensure that the volume is updated before starting the container. The container will terminate right after the scan, if it will not have any conversions to perform.

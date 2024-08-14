@@ -7,5 +7,6 @@ services:
     environment:
       BATCH: 0
       DEBUG: "False"
+      DELETE: "False"
     volumes:
       - mnt:/mnt

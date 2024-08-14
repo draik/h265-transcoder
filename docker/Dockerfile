@@ -7,7 +7,7 @@ RUN apt update && \
                     mkvtoolnix \
                     x265
 
-COPY ./h265_converter /app
+COPY ./h265_converter /app/h265_converter
 
 WORKDIR /app
 
@@ -15,4 +15,6 @@ ENV BATCH=0
 
 ENV DEBUG="False"
 
-CMD ["/usr/local/bin/python", "/app"]
+ENV DELETE="False"
+
+CMD ["/usr/local/bin/python", "-m", "h265_converter"]

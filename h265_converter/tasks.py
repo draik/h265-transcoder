@@ -6,7 +6,7 @@ import sqlite3
 import subprocess
 from pathlib import Path
 
-from interfaces import DatabaseInterface
+from h265_converter.interfaces import DatabaseInterface
 
 logger = logging.getLogger(__name__)
 BATCH = os.getenv("BATCH", str(0))
@@ -82,15 +82,16 @@ class Convert:
             success_msg = f"{input_file} converted successfully."
             logger.info(success_msg)
             return_code = 0
-            if input_file.endswith(".mkv"):
-                cleanup_msg = f"Deleting '{input_file}'."
-                logger.info(cleanup_msg)
-                Path(input_file).unlink()
-            elif input_file.endswith(".mp4"):
-                cleanup_msg = f"Renaming '{output_file}' to '{input_file}'."
-                logger.info(cleanup_msg)
-                Path(output_file).replace(input_file)
-            logger.info("Conversion cleanup complete.")
+            if os.environ["DELETE"].lower() == "true":
+                if input_file.endswith(".mkv"):
+                    cleanup_msg = f"Deleting '{input_file}'."
+                    logger.info(cleanup_msg)
+                    Path(input_file).unlink()
+                elif input_file.endswith(".mp4"):
+                    cleanup_msg = f"Renaming '{output_file}' to '{input_file}'."
+                    logger.info(cleanup_msg)
+                    Path(output_file).replace(input_file)
+                logger.info("Conversion cleanup complete.")
         return return_code
 
 

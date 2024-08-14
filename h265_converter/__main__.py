@@ -2,21 +2,26 @@
 
 import logging
 import os
+import sys
 
-import tasks
+from h265_converter import tasks
+
+app_root = "/app/h265_converter"
+log_file = f"{app_root}/logs/convert.log"
+schema_file = f"{app_root}/schema.sql"
 
 logger = logging.getLogger(__name__)
 
 # Logging to stdout will show all levels
-stdout_handler = logging.StreamHandler()
+stdout_handler = logging.StreamHandler(sys.stdout)
 stdout_handler.setLevel("DEBUG")
 stdout_format = logging.Formatter("[%(name)s::%(levelname)s - %(message)s")
 stdout_handler.setFormatter(stdout_format)
 logger.addHandler(stdout_handler)
 
 # Logging to a file defaults to INFO
-file_handler = logging.FileHandler("/app/logs/convert.log", mode="a", encoding="utf-8")
-if os.environ["DEBUG"]:
+file_handler = logging.FileHandler(filename=log_file, mode="a", encoding="utf-8")
+if os.environ["DEBUG"].lower() in [1, "true"]:
     file_handler.setLevel("DEBUG")
 else:
     file_handler.setLevel("INFO")
@@ -26,7 +31,7 @@ logger.addHandler(file_handler)
 
 # Setup SQLite database
 logger.debug("Initializing SQLite database...")
-tasks.setup_database("schema.sql")
+tasks.setup_database(schema_file)
 logger.info("SQLite database is ready.")
 
 # Scan for video files to convert
