@@ -9,7 +9,7 @@ from pathlib import Path
 from h265_converter.interfaces import DatabaseInterface
 
 logger = logging.getLogger(__name__)
-BATCH = os.getenv("BATCH", str(0))
+BATCH = os.environ["BATCH"]
 
 
 class Convert:
@@ -23,6 +23,13 @@ class Convert:
         """
         self.filename = filename
         self.path = path
+        self.input_file = f"{self.path}/{self.filename}"
+        if self.filename.endswith(".mkv"):
+            self.output_file = self.input_file.replace(".mkv", ".mp4")
+            self.video_title = self.filename.removesuffix(".mkv")
+        elif self.filename.endswith(".mp4"):
+            self.output_file = self.input_file.replace(".mp4", ".h265")
+            self.video_title = self.filename.removesuffix(".mp4")
 
         initiate_msg = f"Initiating '{filename}' conversion."
         logging.info(initiate_msg)
@@ -39,60 +46,58 @@ class Convert:
             0 - Conversion was successful.
             Any non-zero value is a failed conversion.
         """
-        input_file = f"{self.path}/{self.filename}"
-        if self.filename.endswith(".mkv"):
-            output_file = input_file.replace(".mkv", ".mp4")
-            video_title = self.filename.removesuffix(".mkv")
-        elif self.filename.endswith(".mp4"):
-            output_file = input_file.replace(".mp4", ".h265")
-            video_title = self.filename.removesuffix(".mp4")
-        video_title_msg = f"{video_title=}"
-        logger.debug(video_title_msg)
         convert_cmd = ["/usr/bin/ffmpeg",
-                        "-i", f"{input_file}",
+                        "-i", f"{self.input_file}",
                         "-c:v", "libx265",
                         "-vtag", "hvc1",
                         "-c:a", "copy",
-                        "-metadata", f"title={video_title}",
+                        "-metadata", f"title={self.video_title}",
                         "-metadata", "comment=",
                         "-f", "mp4",
-                        f"{output_file}"]
+                        f"{self.output_file}"]
         convert_cmd_msg = f"{convert_cmd=}"
         logger.debug(convert_cmd_msg)
         try:
-            convert_msg = f"Converting '{input_file}' to '{output_file}'."
+            convert_msg = f"Converting '{self.input_file}' to '{self.output_file}'."
             logger.info(convert_msg)
             subprocess.run(convert_cmd,
                            capture_output=True,
                            check=True,
                            text=True)
         except subprocess.CalledProcessError as convert_error:
-            convert_err_msg = f"Failed to convert {input_file}"
+            convert_err_msg = f"Failed to convert {self.input_file}"
             logger.error(convert_err_msg)
             logger.exception(subprocess.CalledProcessError)
-            if Path(output_file).exists():
+            if Path(self.output_file).exists():
                 logger.debug("Removing the failed output file.")
-                Path(output_file).unlink()
+                Path(self.output_file).unlink()
                 logger.debug("Removed output file.")
             else:
-                cleanup_msg = f"Nothing to remove. '{output_file}' not found."
+                cleanup_msg = f"Nothing to remove. '{self.output_file}' not found."
                 logger.debug(cleanup_msg)
             return_code = convert_error.returncode
         else:
-            success_msg = f"{input_file} converted successfully."
+            success_msg = f"{self.input_file} converted successfully."
             logger.info(success_msg)
             return_code = 0
-            if os.environ["DELETE"].lower() == "true":
-                if input_file.endswith(".mkv"):
-                    cleanup_msg = f"Deleting '{input_file}'."
-                    logger.info(cleanup_msg)
-                    Path(input_file).unlink()
-                elif input_file.endswith(".mp4"):
-                    cleanup_msg = f"Renaming '{output_file}' to '{input_file}'."
-                    logger.info(cleanup_msg)
-                    Path(output_file).replace(input_file)
-                logger.info("Conversion cleanup complete.")
         return return_code
+
+
+    def delete_original(self) -> None:
+        """Remove the original input file.
+
+        MKV conversion outputs to MP4 file, and the original MKV will be deleted.
+        MP4 conversion outputs to ".h265" MP4, which will overwrite the ".mp4" file.
+        """
+        if self.input_file.endswith(".mkv"):
+            cleanup_msg = f"Deleting '{self.input_file}'."
+            logger.info(cleanup_msg)
+            Path(self.input_file).unlink()
+        elif self.input_file.endswith(".mp4"):
+            cleanup_msg = f"Renaming '{self.output_file}' to '{self.input_file}'."
+            logger.info(cleanup_msg)
+            Path(self.output_file).replace(self.input_file)
+        logger.info("Conversion cleanup complete.")
 
 
 def convert_batch() -> list:

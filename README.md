@@ -15,17 +15,28 @@ Once the container starts, it scans the mounted volume for video files to conver
 
 During the conversion process, the output file will have the *Title* metadata updated to match the filename (without extension), and the *Comment* tag removed.
 
+![Workflow diagram](workflow_diagram.png)
+
 ## Docker
 
-### Build Image
+### Pull the image
+The image is available on Docker Hub:
+
+`docker pull draikx21/h265_converter`
+
+### Build an Image
 Build the docker image using the following command:
 
 `docker build -f docker/Dockerfile [-t <image_name:tag>] .`
 
 ### Run a Container
-The container will need a local directory mounted to "/mnt" in the container.
+***DOCKER COMPOSE***  
+Use the provided **docker-compose.yaml** file, and ensure the variables are properly set. Additionally, set the local directory to scan is mounted to "/mnt" within the container.
 
-`docker run -v /path/to/videos:/mnt <image_name:tag>`
+***MANUALLY***  
+All variables and volumes are specified at the time of execution.
+
+`docker run -e key=value -e key=value -v /path/to/videos:/mnt <image_name[:tag]>`
 
 ### Environment Variables
 
@@ -43,10 +54,10 @@ Once a video file has been successfully converted to h.265, the original file ca
 ### Reading the Docker Logs (stdout logging)
 The console output is setup with DEBUG-level logging. While the Docker container is running, the console will display the current actions, but all console output is available in the Docker logs, even after it shuts down (and container is not removed). Read the Docker logs with the following command:
 
-`docker logs <container_name>`
+`docker logs [-f] <container_name>`
 
 ### Volumes
-The mount to '/mnt' is the scanned directory. It is set by the *volume* local directory value in the **docker-compose.yaml** file. Ensure that the volume is updated before starting the container. The container will terminate right after the scan, if it will not have any conversions to perform.
+The volume mounted to '/mnt' is the scanned directory. It is set by the *volume* local directory value in the **docker-compose.yaml** file. Ensure that the volume is updated before starting the container. The container will terminate right after the scan, if it will not have any conversions to perform.
 
 The mounted volume will be scanned recursively. This can be used to specify the depth of video conversions. For example, Plex TV series have a folder structure of the root directory, the show name, then the season folder, which contain the respective episodes.
 

@@ -6,26 +6,30 @@ import sys
 
 from h265_converter import tasks
 
+DEBUG = os.environ["DEBUG"].lower()
+DELETE = os.environ["DELETE"].lower()
 app_root = "/app/h265_converter"
 log_file = f"{app_root}/logs/convert.log"
 schema_file = f"{app_root}/schema.sql"
 
 logger = logging.getLogger(__name__)
+logger.setLevel("DEBUG")
 
 # Logging to stdout will show all levels
 stdout_handler = logging.StreamHandler(sys.stdout)
 stdout_handler.setLevel("DEBUG")
-stdout_format = logging.Formatter("[%(name)s::%(levelname)s - %(message)s")
+stdout_format = logging.Formatter("[%(levelname)s] (%(name)s) %(message)s")
 stdout_handler.setFormatter(stdout_format)
 logger.addHandler(stdout_handler)
 
 # Logging to a file defaults to INFO
 file_handler = logging.FileHandler(filename=log_file, mode="a", encoding="utf-8")
-if os.environ["DEBUG"].lower() in [1, "true"]:
+if DEBUG == "true":
     file_handler.setLevel("DEBUG")
 else:
     file_handler.setLevel("INFO")
-file_format = logging.Formatter("%(asctime)s [%(name)s::%(levelname)s - %(message)s]")
+file_format = logging.Formatter("%(asctime)s [%(levelname)s] (%(name)s) %(message)s",
+                                datefmt="%Y-%m-%d %H:%M:%S")
 file_handler.setFormatter(file_format)
 logger.addHandler(file_handler)
 
@@ -57,5 +61,7 @@ if not convert_list:
 for queue in convert_list:
     path = queue[0]
     filename = queue[1]
-    convert_video = tasks.Convert(path, filename)
-    convert_video.convert()
+    video_file = tasks.Convert(path, filename)
+    convert_video = video_file.convert()
+    if (convert_video == 0) and (DELETE == "true"):
+        video_file.delete_original()
