@@ -1,11 +1,7 @@
-FROM python:3.12-slim
+FROM python:3.12-alpine3.20
 
-RUN apt update && \
-    apt install -y exiftool \
-                    ffmpeg \
-                    libx265-199 \
-                    mkvtoolnix \
-                    x265
+RUN apk update && \
+    apk add exiftool ffmpeg mkvtoolnix x265 x265-libs
 
 COPY ./h265_converter /app/h265_converter
 
