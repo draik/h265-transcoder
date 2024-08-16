@@ -8,7 +8,7 @@ from pathlib import Path
 
 from h265_converter.interfaces import DatabaseInterface
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("app")
 BATCH = os.environ["BATCH"]
 
 
@@ -32,7 +32,7 @@ class Convert:
             self.video_title = self.filename.removesuffix(".mp4")
 
         initiate_msg = f"Initiating '{filename}' conversion."
-        logging.info(initiate_msg)
+        logger.info(initiate_msg)
 
 
     def convert(self) -> int:
@@ -65,7 +65,7 @@ class Convert:
                            check=True,
                            text=True)
         except subprocess.CalledProcessError as convert_error:
-            convert_err_msg = f"Failed to convert {self.input_file}"
+            convert_err_msg = f"Failed to convert '{self.input_file}'"
             logger.error(convert_err_msg)
             logger.exception(subprocess.CalledProcessError)
             if Path(self.output_file).exists():
@@ -77,7 +77,7 @@ class Convert:
                 logger.debug(cleanup_msg)
             return_code = convert_error.returncode
         else:
-            success_msg = f"{self.input_file} converted successfully."
+            success_msg = f"'{self.input_file}' converted successfully."
             logger.info(success_msg)
             return_code = 0
         return return_code
@@ -115,16 +115,17 @@ def convert_batch() -> list:
         limit = None
     else:
         if batch == 0:
-            logger.info("Setting Batch to unlimited.")
+            logger.info("Batch is 0; unlimited.")
             limit = None
         elif batch > 0:
-            batch_msg = f"Setting batch limit to {limit}."
+            batch_msg = f"Setting batch limit to {batch}."
             logger.debug(batch_msg)
-            limit = int(batch)
+            limit = batch
         elif batch < 0:
             batch_msg = f"{batch=}. BATCH variable must be a positive number."
             logger.debug(batch_msg)
-            logger.info("Setting batch to unlimited.")
+            negative_msg = f"Batch is '{batch}'; unlimited."
+            logger.info(negative_msg)
             limit = None
         else:
             limit = None
@@ -164,7 +165,7 @@ def path_scanner() -> list:
         for filename in files:
             if filename.endswith(video_extensions):
                 video_list.append((root, filename))
-                found_msg = f"Found {root}/{filename}"
+                found_msg = f"Found '{root}/{filename}'."
                 logger.info(found_msg)
     logger.debug("Scan complete.")
     scan_results_msg = f"Found {len(video_list)} video files."
@@ -186,22 +187,22 @@ def read_metadata(path: str, filename: str) -> tuple:
         Tuple of the filename and conversion status.
     """
     video_file = f"{path}/{filename}"
-    logger.debug("Checking Compressor ID metadata")
+    logger.debug("Checking Compressor ID metadata.")
     reader_cmd = ["/usr/bin/exiftool", "-s3", "-CompressorID", video_file]
     metadata_sp = subprocess.run(reader_cmd,
                                  capture_output = True,
                                  check = True,
                                  text = True)
     if metadata_sp.stdout.lower().strip() == "hvc1":
-        converted_msg = f"{video_file} is already converted."
+        converted_msg = f"'{video_file}' is already converted."
         logger.info(converted_msg)
-        result = (filename, "done")
+        result = (filename, "skip")
     elif metadata_sp.stdout == "":
-        unknown_msg = f"{video_file} returned empty Compressor ID. Verify video integrity."
+        unknown_msg = f"'{video_file}' returned empty Compressor ID. Verify video integrity."
         logger.warning(unknown_msg)
         result = (filename, "skip")
     else:
-        convert_msg = f"{video_file} needs to be converted."
+        convert_msg = f"'{video_file}' needs to be converted."
         logger.info(convert_msg)
         result = (filename, "convert")
     return result
@@ -222,7 +223,7 @@ def scan_sql_insert(insert_list: list) -> int:
                             ?, ?, ?);
     """
 
-    logger.debug("Inserting scanned results into SQLite `queue` table.")
+    logger.debug("Inserting scanned results into SQLite 'queue' table.")
 
     with DatabaseInterface() as (_connect, db_cursor):
         try:
@@ -233,7 +234,7 @@ def scan_sql_insert(insert_list: list) -> int:
             raise SystemExit(1) from sqlite3.Error
         else:
             db_cursor.close()
-            logger.info("Successfully inserted list into SQLite `queue` table.")
+            logger.info("Successfully inserted list into SQLite 'queue' table.")
             return 0
 
 
@@ -258,5 +259,5 @@ def setup_database(schema_file: str) -> int:
         with DatabaseInterface() as (connection, cursor):
             cursor.executescript(create_table)
             cursor.close()
-        logger.info("SQLite database setup complete.")
+        logger.debug("SQLite database setup complete.")
         return 0

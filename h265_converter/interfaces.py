@@ -3,7 +3,7 @@
 import logging
 import sqlite3
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("app")
 sqlite_db = "/app/h265_converter/queue.db"
 
 
@@ -16,7 +16,7 @@ class DatabaseInterface:
         self
     ):
         """Create the SQLite database."""
-        logger.debug("Initializing DatabaseInterface...")
+        logger.debug("Initializing DatabaseInterface.")
         self.db_file = sqlite_db
 
         self.db_connect = None
@@ -35,7 +35,7 @@ class DatabaseInterface:
 
     def __exit__(self, exception_type, exception_value, exception_traceback) -> None:
         """Closed the database connection."""
-        logger.debug("Closing the database connection...")
+        logger.debug("Closing the database connection.")
 
         if exception_type:
             exception_msg = f"An exception occurred: {exception_type}, {exception_value}"

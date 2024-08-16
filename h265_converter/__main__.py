@@ -12,13 +12,13 @@ app_root = "/app/h265_converter"
 log_file = f"{app_root}/logs/convert.log"
 schema_file = f"{app_root}/schema.sql"
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("app")
 logger.setLevel("DEBUG")
 
 # Logging to stdout will show all levels
 stdout_handler = logging.StreamHandler(sys.stdout)
 stdout_handler.setLevel("DEBUG")
-stdout_format = logging.Formatter("[%(levelname)s] (%(name)s) %(message)s")
+stdout_format = logging.Formatter("[{levelname}] {message}", style="{")
 stdout_handler.setFormatter(stdout_format)
 logger.addHandler(stdout_handler)
 
@@ -28,13 +28,13 @@ if DEBUG == "true":
     file_handler.setLevel("DEBUG")
 else:
     file_handler.setLevel("INFO")
-file_format = logging.Formatter("%(asctime)s [%(levelname)s] (%(name)s) %(message)s",
-                                datefmt="%Y-%m-%d %H:%M:%S")
+file_format = logging.Formatter("{asctime} [{levelname}] {message}",
+                                datefmt="%Y-%m-%d %H:%M:%S",
+                                style="{",)
 file_handler.setFormatter(file_format)
 logger.addHandler(file_handler)
 
 # Setup SQLite database
-logger.debug("Initializing SQLite database...")
 tasks.setup_database(schema_file)
 logger.info("SQLite database is ready.")
 
@@ -55,7 +55,7 @@ tasks.scan_sql_insert(queue_list)
 
 convert_list = tasks.convert_batch()
 if not convert_list:
-    logger.info("No files marked for conversion. Exiting.")
+    logger.warning("No files marked for conversion. Exiting.")
     raise SystemExit(1)
 
 for queue in convert_list:
