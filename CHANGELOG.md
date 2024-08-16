@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## [0.2.0] 2024-08-15 Add SQL Status Update
+- tasks.Convert.convert: add a `finally` entry after the conversion  
+  task. Successful conversions are "done" and unsuccessful conversions  
+  are "failed" status. The status is also the method return value,  
+  which is used for (dis)allowing the deletion of the original file.
+
 ## [0.1.2] 2024-08-15 Bug Fix: Variable Error
 - tasks.convert_batch: used the wrong variable name.  
   Fixed call to `{batch}` instead of `{limit}`.

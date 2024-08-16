@@ -35,7 +35,7 @@ class Convert:
         logger.info(initiate_msg)
 
 
-    def convert(self) -> int:
+    def convert(self) -> str:
         """Convert video file to h.265 HVC1 MP4.
 
         During the conversion, metadata will be cleaned up.
@@ -64,7 +64,7 @@ class Convert:
                            capture_output=True,
                            check=True,
                            text=True)
-        except subprocess.CalledProcessError as convert_error:
+        except subprocess.CalledProcessError:
             convert_err_msg = f"Failed to convert '{self.input_file}'"
             logger.error(convert_err_msg)
             logger.exception(subprocess.CalledProcessError)
@@ -75,12 +75,29 @@ class Convert:
             else:
                 cleanup_msg = f"Nothing to remove. '{self.output_file}' not found."
                 logger.debug(cleanup_msg)
-            return_code = convert_error.returncode
+            convert_status = "failed"
         else:
             success_msg = f"'{self.input_file}' converted successfully."
             logger.info(success_msg)
-            return_code = 0
-        return return_code
+            convert_status = "done"
+        finally:
+            status_update_query = """UPDATE queue
+                                        SET status = ?
+                                        WHERE path = ? AND
+                                        filename = ?
+                                        LIMIT 1;"""
+            status_update_data = (convert_status, self.path, self.filename)
+            with DatabaseInterface() as (_connect, db_cursor):
+                try:
+                    db_cursor.execute(status_update_query, status_update_data)
+                except sqlite3.Error:
+                    logger.error("SQLite status update failed.")
+                    logger.exception(sqlite3.Error)
+                else:
+                    db_cursor.close()
+                    sql_update_msg = f"Updated status for '{self.filename}' to '{convert_status}'."
+                    logger.info(sql_update_msg)
+        return convert_status
 
 
     def delete_original(self) -> None:

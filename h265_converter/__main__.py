@@ -63,5 +63,5 @@ for queue in convert_list:
     filename = queue[1]
     video_file = tasks.Convert(path, filename)
     convert_video = video_file.convert()
-    if (convert_video == 0) and (DELETE == "true"):
+    if (convert_video == "done") and (DELETE == "true"):
         video_file.delete_original()
