@@ -84,8 +84,7 @@ class Convert:
             status_update_query = """UPDATE queue
                                         SET status = ?
                                         WHERE path = ? AND
-                                        filename = ?
-                                        LIMIT 1;"""
+                                        filename = ? ;"""
             status_update_data = (convert_status, self.path, self.filename)
             with DatabaseInterface() as (_connect, db_cursor):
                 try:

@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## [0.2.1] HOT-FIX: Remove SQLite Update Limit
+- tasks.Convert.convert: remove `LIMIT 1;` from the status update  
+  SQLite statement. This is a syntax issue, raising sqlite3.OperationalError.
+
 ## [0.2.0] 2024-08-15 Add SQL Status Update
 - tasks.Convert.convert: add a `finally` entry after the conversion  
   task. Successful conversions are "done" and unsuccessful conversions  
