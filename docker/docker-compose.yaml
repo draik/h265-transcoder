@@ -8,5 +8,6 @@ services:
       BATCH: 0
       DEBUG: "False"
       DELETE: "False"
+      TZ: "UTC"
     volumes:
       - mnt:/mnt

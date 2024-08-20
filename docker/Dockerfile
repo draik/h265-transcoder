@@ -13,4 +13,6 @@ ENV DEBUG="False"
 
 ENV DELETE="False"
 
+ENV TZ="UTC"
+
 CMD ["/usr/local/bin/python", "-m", "h265_converter"]

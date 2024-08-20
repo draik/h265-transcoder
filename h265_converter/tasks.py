@@ -21,8 +21,8 @@ class Convert:
             path (str): the absolute path to the video file.
             filename (str): the video filename.
         """
-        self.filename = filename
         self.path = path
+        self.filename = filename
         self.input_file = f"{self.path}/{self.filename}"
         if self.filename.endswith(".mkv"):
             self.output_file = self.input_file.replace(".mkv", ".mp4")
@@ -30,9 +30,6 @@ class Convert:
         elif self.filename.endswith(".mp4"):
             self.output_file = self.input_file.replace(".mp4", ".h265")
             self.video_title = self.filename.removesuffix(".mp4")
-
-        initiate_msg = f"Initiating '{filename}' conversion."
-        logger.info(initiate_msg)
 
 
     def convert(self) -> str:
@@ -80,6 +77,11 @@ class Convert:
             success_msg = f"'{self.input_file}' converted successfully."
             logger.info(success_msg)
             convert_status = "done"
+            input_size = get_file_size(self.input_file)
+            output_size = get_file_size(self.output_file)
+            diff_size = input_size-output_size
+            diff_size_msg = f"Recovered {diff_size:,} bytes in conversion."
+            logger.info(diff_size_msg)
         finally:
             status_update_query = """UPDATE queue
                                         SET status = ?
@@ -90,7 +92,9 @@ class Convert:
                 try:
                     db_cursor.execute(status_update_query, status_update_data)
                 except sqlite3.Error:
-                    logger.error("SQLite status update failed.")
+                    update_query_msg = f"{status_update_data=}"
+                    logger.debug(update_query_msg)
+                    logger.error("SQLite convert status update failed.")
                     logger.exception(sqlite3.Error)
                 else:
                     db_cursor.close()
@@ -106,13 +110,13 @@ class Convert:
         MP4 conversion outputs to ".h265" MP4, which will overwrite the ".mp4" file.
         """
         if self.input_file.endswith(".mkv"):
-            cleanup_msg = f"Deleting '{self.input_file}'."
-            logger.info(cleanup_msg)
             Path(self.input_file).unlink()
-        elif self.input_file.endswith(".mp4"):
-            cleanup_msg = f"Renaming '{self.output_file}' to '{self.input_file}'."
+            cleanup_msg = f"Deleted '{self.input_file}'."
             logger.info(cleanup_msg)
+        elif self.input_file.endswith(".mp4"):
             Path(self.output_file).replace(self.input_file)
+            cleanup_msg = f"Renamed '{self.output_file}' to '{self.input_file}'."
+            logger.info(cleanup_msg)
         logger.info("Conversion cleanup complete.")
 
 
@@ -125,8 +129,8 @@ def convert_batch() -> list:
     try:
         batch = int(BATCH)
     except ValueError:
-        value_error_msg = f"BATCH is not an integer. {BATCH=}"
-        logger.warning(value_error_msg)
+        value_error_msg = f"BATCH is not an integer. {BATCH=}."
+        logger.error(value_error_msg)
         logger.info("Setting batch to unlimited.")
         limit = None
     else:
@@ -135,12 +139,12 @@ def convert_batch() -> list:
             limit = None
         elif batch > 0:
             batch_msg = f"Setting batch limit to {batch}."
-            logger.debug(batch_msg)
+            logger.info(batch_msg)
             limit = batch
         elif batch < 0:
             batch_msg = f"{batch=}. BATCH variable must be a positive number."
-            logger.debug(batch_msg)
-            negative_msg = f"Batch is '{batch}'; unlimited."
+            logger.warning(batch_msg)
+            negative_msg = f"Batch is '{batch}'. Setting to unlimited."
             logger.info(negative_msg)
             limit = None
         else:
@@ -154,13 +158,37 @@ def convert_batch() -> list:
             batch_result = db_cursor.execute(batch_query)
             batch_queue = batch_result.fetchall()
         except sqlite3.Error:
-            logger.error("SQLite query failed.")
+            logger.error("SQLite convert selection query failed.")
             logger.exception(sqlite3.Error)
             raise SystemExit(1) from sqlite3.Error
         else:
             db_cursor.close()
-            logger.info("Successfully retrieved batch list.")
+            logger.info("Successfully retrieved batch of files to convert.")
             return batch_queue
+
+
+def get_file_size(filename: str) -> int:
+    """Get the file size of the input and output file.
+
+    Args:
+        filename (str): file to get its size
+    Returns:
+        int of size in bytes
+    """
+    byte_size = Path(filename).stat().st_size
+    gigabyte = 1073741824
+    megabyte = 1048576
+
+    if byte_size >= gigabyte:
+        human_size = int(byte_size/(1024*1024*1024))
+        human_size_msg = f"'{filename}' is {human_size}GB."
+    elif byte_size >= megabyte:
+        human_size = int(byte_size/(1024*1024))
+        human_size_msg = f"'{filename}' is {human_size}MB."
+    else:
+        human_size_msg = f"'{filename}' is {byte_size:,}B."
+    logger.info(human_size_msg)
+    return byte_size
 
 
 def path_scanner() -> list:
@@ -176,15 +204,14 @@ def path_scanner() -> list:
     video_extensions = (".mkv", ".mp4")
     video_list = []
 
-    logger.debug("Beginning scan...")
+    logger.info("Beginning scan...")
     for root, _dirs, files in os.walk(scan_path):
         for filename in files:
             if filename.endswith(video_extensions):
                 video_list.append((root, filename))
                 found_msg = f"Found '{root}/{filename}'."
                 logger.info(found_msg)
-    logger.debug("Scan complete.")
-    scan_results_msg = f"Found {len(video_list)} video files."
+    scan_results_msg = f"Scan complete. Found {len(video_list)} video file(s)."
     logger.info(scan_results_msg)
     if len(video_list) == 0:
         logger.warning("Empty scan results. Is the volume mounted? Exiting.")
@@ -209,11 +236,12 @@ def read_metadata(path: str, filename: str) -> tuple:
                                  capture_output = True,
                                  check = True,
                                  text = True)
-    if metadata_sp.stdout.lower().strip() == "hvc1":
+    compressor_metadata = metadata_sp.stdout.lower().strip()
+    if compressor_metadata == "hvc1":
         converted_msg = f"'{video_file}' is already converted."
         logger.info(converted_msg)
         result = (filename, "skip")
-    elif metadata_sp.stdout == "":
+    elif compressor_metadata == "":
         unknown_msg = f"'{video_file}' returned empty Compressor ID. Verify video integrity."
         logger.warning(unknown_msg)
         result = (filename, "skip")
@@ -224,14 +252,10 @@ def read_metadata(path: str, filename: str) -> tuple:
     return result
 
 
-def scan_sql_insert(insert_list: list) -> int:
+def scan_sql_insert(insert_list: list) -> None:
     """Insert scan results list into SQLite database.
 
     The list contains a list of values for the SQL insert.
-
-    Returns:
-        0 - SQL insertion was successful.
-        Any non-zero value is a failure to execute the SQL insertion.
     """
     insert_statement = """INSERT INTO queue (
                             path, filename, convert)
@@ -239,19 +263,21 @@ def scan_sql_insert(insert_list: list) -> int:
                             ?, ?, ?);
     """
 
-    logger.debug("Inserting scanned results into SQLite 'queue' table.")
+    logger.debug("Inserting scanned results into SQLite database.")
 
     with DatabaseInterface() as (_connect, db_cursor):
         try:
             db_cursor.executemany(insert_statement, insert_list)
+        except sqlite3.IntegrityError:
+            logger.error("Duplicate filename found in SQLite table.")
         except sqlite3.Error:
-            logger.error("SQLite execution failed.")
+            logger.error("SQLite insert execution failed.")
             logger.exception(sqlite3.Error)
             raise SystemExit(1) from sqlite3.Error
         else:
             db_cursor.close()
+        finally:
             logger.info("Successfully inserted list into SQLite 'queue' table.")
-            return 0
 
 
 def setup_database(schema_file: str) -> int:
@@ -261,19 +287,15 @@ def setup_database(schema_file: str) -> int:
         0 - successfully import schema_file into SQLite DB.
         Any non-zero value is a failure to import the schema_file.
     """
-    logger.debug("Setting up the SQLite database...")
-
     try:
         with Path(schema_file).open(mode="r", encoding="utf-8") as db_schema:
             create_table = db_schema.read()
     except FileNotFoundError:
-        file_not_found_msg = f"{schema_file} was not found."
+        file_not_found_msg = f"Schema file not found. Expected: '{schema_file}'."
         logger.error(file_not_found_msg)
-        logger.exception(FileNotFoundError)
         raise SystemExit(1) from FileNotFoundError
     else:
         with DatabaseInterface() as (connection, cursor):
             cursor.executescript(create_table)
             cursor.close()
-        logger.debug("SQLite database setup complete.")
         return 0

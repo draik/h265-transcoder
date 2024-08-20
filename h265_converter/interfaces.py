@@ -28,15 +28,14 @@ class DatabaseInterface:
             self.db_connect = sqlite3.connect(self.db_file)
             self.db_cursor = self.db_connect.cursor()
         except sqlite3.Error:
-            logger.exception("Failed to connect to the database.")
+            logger.error("Failed to connect to the database.")
+            logger.exception(sqlite3.Error)
             raise SystemExit(1) from sqlite3.Error
 
         return self.db_connect, self.db_cursor
 
     def __exit__(self, exception_type, exception_value, exception_traceback) -> None:
-        """Closed the database connection."""
-        logger.debug("Closing the database connection.")
-
+        """Close the database connection."""
         if exception_type:
             exception_msg = f"An exception occurred: {exception_type}, {exception_value}"
             logger.error(exception_msg)

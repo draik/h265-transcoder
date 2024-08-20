@@ -1,5 +1,24 @@
 # CHANGELOG
 
+## [0.3.0] Feature: Add File Size Reporting
+- tasks.get_file_size: added a function to check the file size, logging the  
+  size in a human-readable value, and returning the size in bytes.
+- tasks.Convert.convert: implemented the usage of the function to calculate the  
+  amount of disk space that was recovered by converting to h.265 HVC1,  
+  or can be recovered, if `DELETE` was set to "False".
+
+## [0.2.2] Minor Updates to Logging
+- tasks.scan_sql_insert: added an exception for `IntegrityError` raised when  
+  a duplicate filename is being inserted into the table. This is a specific  
+  error, compared to being captured from a generic `Error` exception.  
+  Removed unnecessary return.
+- Using the `.exception()` logging will provide a traceback, and is  
+  not always required, such as `IntegrityError`. Removed unnecessary  
+  exception logging to reduce the traceback noise. Applied to all files.
+- Removed more excessive and redundant debug logging.
+- `main` file: minor cleanup of the grouped tasks between scanning and converting.
+- Docker: added `TZ` environment variable to set the timezone for log file timestamp.
+
 ## [0.2.1] HOT-FIX: Remove SQLite Update Limit
 - tasks.Convert.convert: remove `LIMIT 1;` from the status update  
   SQLite statement. This is a syntax issue, raising sqlite3.OperationalError.

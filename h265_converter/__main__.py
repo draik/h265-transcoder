@@ -40,7 +40,6 @@ logger.info("SQLite database is ready.")
 
 # Scan for video files to convert
 scan_list = tasks.path_scanner()
-
 queue_list = []
 for result in scan_list:
     path = result[0]
@@ -50,9 +49,9 @@ for result in scan_list:
     else:
         filename, convert = tasks.read_metadata(path, filename)
         queue_list.append([path, filename, convert])
-
 tasks.scan_sql_insert(queue_list)
 
+# Convert the video files
 convert_list = tasks.convert_batch()
 if not convert_list:
     logger.warning("No files marked for conversion. Exiting.")
