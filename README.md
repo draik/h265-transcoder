@@ -51,6 +51,9 @@ Pertains to the log file, not stdout logging. It will log all INFO-level and hig
 ***DELETE*** (default = "False")  
 Once a video file has been successfully converted to h.265, the original file can be removed. Set value to "True" to enable this action.
 
+***TZ*** (default = "UTC")  
+Set the timezone for logging to the file. The list of TZ Identifiers which can be used in place of "UTC" can be found on [Wikipedia](https://en.wikipedia.org/wiki/List_of_tz_database_time_zones).
+
 ### Reading the Docker Logs (stdout logging)
 The console output is setup with DEBUG-level logging. While the Docker container is running, the console will display the current actions, but all console output is available in the Docker logs, even after it shuts down (and container is not removed). Read the Docker logs with the following command:
 
