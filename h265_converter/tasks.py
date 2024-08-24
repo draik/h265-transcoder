@@ -9,7 +9,7 @@ from pathlib import Path
 from h265_converter.interfaces import DatabaseInterface
 
 logger = logging.getLogger("app")
-BATCH = os.environ["BATCH"]
+BATCH = os.getenv("BATCH", "0")
 
 
 class Convert:

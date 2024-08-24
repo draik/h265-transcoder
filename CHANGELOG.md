@@ -1,5 +1,10 @@
 # CHANGELOG
 
+## [0.3.4] Minor Change for Calling BATCH Environment Variable
+- tasks: used `os.getenv()` instead of `os.environ[]` for the 'BATCH' environment  
+  variable, to set a default value of "0" (string zero).  
+  `os.getenv()` returns a string, per [PLW1508](https://docs.astral.sh/ruff/rules/invalid-envvar-default/).
+
 ## [0.3.3] Add Log File to Repository
 - logs: this was built into the Docker image. However, since the file is created by  
   the module, it relies on the existence of the 'logs' directory.  
