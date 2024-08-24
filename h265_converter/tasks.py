@@ -112,12 +112,10 @@ class Convert:
         if self.input_file.endswith(".mkv"):
             Path(self.input_file).unlink()
             cleanup_msg = f"Deleted '{self.input_file}'."
-            logger.info(cleanup_msg)
         elif self.input_file.endswith(".mp4"):
             Path(self.output_file).replace(self.input_file)
             cleanup_msg = f"Renamed '{self.output_file}' to '{self.input_file}'."
-            logger.info(cleanup_msg)
-        logger.info("Conversion cleanup complete.")
+        logger.info(cleanup_msg)
 
 
 def convert_batch() -> list:

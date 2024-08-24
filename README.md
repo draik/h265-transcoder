@@ -20,9 +20,9 @@ During the conversion process, the output file will have the *Title* metadata up
 ## Docker
 
 ### Pull the image
-The image is available on [Docker Hub](https://hub.docker.com/r/draikx21/h265_converter/):
+The image is available on [Docker Hub](https://hub.docker.com/r/draikx21/h265-converter/):
 
-`docker pull draikx21/h265_converter`
+`docker pull draikx21/h265-converter`
 
 ### Build an Image
 Build the docker image using the following command:

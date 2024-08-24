@@ -2,7 +2,7 @@
 
 services:
   converter:
-    image: draikx21/h265_converter
+    image: draikx21/h265-converter
     restart: unless-stopped
     environment:
       UID: 1000

@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## [0.3.2] Minor Change to Docker Image Name and Cleanup Logging
+- Changed the docker image name from an underscore (`_`) to a hyphen (`-`).
+- tasks.delete_original: consolidated the cleanup logging messages for MKV and MP4.
+
 ## [0.3.1] Feature: Setup non-root User Environment
 - Docker: add the `UID` and `GID` environment variables to set the output file  
   ownership. This variable is set in the **docker-compose.yaml** file.
