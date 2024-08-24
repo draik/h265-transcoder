@@ -40,6 +40,10 @@ All variables and volumes are specified at the time of execution.
 
 ### Environment Variables
 
+***UID*** and ***GID*** (default = 1000)  
+This setting is in the **docker-compose.yaml** file. When this is set with the corresponding UID (user ID) and GID (group ID) as the source file user, it will ensure the output file matches the ownership. Without it, all content is owned by the Docker container's root user (UID and GID 0). To obtain the user's UID and GID from the command line, use the `id` command. By itself, it will provide your user's information, and `id <username>` will provider information on the specified user.  
+*Note*: The username does not matter for the environment variable, only the UID and GID.
+
 ***BATCH*** (default = 0)  
 This is for the amount of video files to convert. The default value is "0" (zero) which is unlimited, and will go through all of the video files it found in the scan. The list depends on the result order from the `os.walk` scan, as the limit is for the top batch count.
 

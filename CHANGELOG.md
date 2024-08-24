@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## [0.3.1] Feature: Setup non-root User Environment
+- Docker: add the `UID` and `GID` environment variables to set the output file  
+  ownership. This variable is set in the **docker-compose.yaml** file.
+
 ## [0.3.0] Feature: Add File Size Reporting
 - tasks.get_file_size: added a function to check the file size, logging the  
   size in a human-readable value, and returning the size in bytes.
@@ -50,4 +54,4 @@
 
 ## [0.0.1] 2024-08-14 Initial Release
 - First official release of the h.265 converter tool.  
-  Refer to the README.md for usage and general information.
+  Refer to the [README](README.md) for usage and general information.
