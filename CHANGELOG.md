@@ -1,5 +1,10 @@
 # CHANGELOG
 
+## [0.3.3] Add Log File to Repository
+- logs: this was built into the Docker image. However, since the file is created by  
+  the module, it relies on the existence of the 'logs' directory.  
+  The 'logs' directory and 'convert.log' file are now part of the repository.
+
 ## [0.3.2] Minor Change to Docker Image Name and Cleanup Logging
 - Changed the docker image name from an underscore (`_`) to a hyphen (`-`).
 - tasks.delete_original: consolidated the cleanup logging messages for MKV and MP4.
