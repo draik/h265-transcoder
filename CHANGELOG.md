@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## [0.4.1] Add SQLite Package
+- Docker: added sqlite package installation to use for troubleshooting  
+  any issues with the SQLite database.
+
 ## [0.4.0] Create a User and Add Config for SQLite Database and Log File
 - Docker: added a user to run the conversion tool, and have its UID and GID  
   match the ownership of the mounted volume via *docker-compose.yaml*.  

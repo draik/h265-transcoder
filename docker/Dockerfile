@@ -1,7 +1,7 @@
 FROM python:3.12-alpine3.20
 
 RUN apk update && \
-    apk add exiftool ffmpeg mkvtoolnix x265 x265-libs
+    apk add exiftool ffmpeg mkvtoolnix sqlite x265 x265-libs
 
 COPY ./h265_converter /app/h265_converter
 
