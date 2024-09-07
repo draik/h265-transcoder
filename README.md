@@ -36,7 +36,7 @@ Use the provided **docker-compose.yaml** file, and ensure the variables are prop
 ***MANUALLY***  
 All variables and volumes are specified at the time of execution.
 
-`docker run -e key=value -e key=value -v /path/to/videos:/mnt <image_name[:tag]>`
+`docker run [-u uid:gid] [-e key=value] -v /path/to/videos:/mnt <image_name[:tag]>`
 
 ### Environment Variables
 
@@ -64,6 +64,7 @@ The console output is setup with DEBUG-level logging. While the Docker container
 `docker logs [-f] <container_name>`
 
 ### Volumes
+***/mnt***  
 The volume mounted to '/mnt' is the scanned directory. It is set by the *volume* local directory value in the **docker-compose.yaml** file. Ensure that the volume is updated before starting the container. The container will terminate right after the scan, if it will not have any conversions to perform.
 
 The mounted volume will be scanned recursively. This can be used to specify the depth of video conversions. For example, Plex TV series have a folder structure of the root directory, the show name, then the season folder, which contain the respective episodes.
@@ -80,3 +81,13 @@ The mounted volume will be scanned recursively. This can be used to specify the 
 Mounting 'Random Show' will scan all of its season directories for video files to convert. However, mounting a specific season will only scan that directory for video files that need to be converted to h.265 HVC1 MP4. If the root folder containing all of the TV shows is mounted, it will scan all of the TV shows and respective seasons for videos to convert.
 
 Movies are typically one flat directory. Mounting the directory will scan and process all video files. This is when setting the **BATCH** environment variable can help ensure the conversions are not running for days.
+
+***CAVEATS***  
+**OPTIONAL: Mounting */tmp* volume**  
+SQLite: as persistent data means the SQLite database file needs to be deleted, or the table cleared. This is most notably going to be an issue when the */mnt* volume is changed, and the paths and filenames are no longer valid.
+
+Logging: Ideally, this is for troubleshooting purposes. The file will continue to grow, with new entries appending to the existing file.
+
+### Known Error
+***returned non-zero exit status 243***  
+When setting the user's UID and GID in the *docker-compose.yaml* file or running a container manually, if it is not a valid UID on the host, the `subprocess.run()` execution will create exceptions, and the exit status 243.

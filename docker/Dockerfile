@@ -5,6 +5,19 @@ RUN apk update && \
 
 COPY ./h265_converter /app/h265_converter
 
+ARG UNAME="convusr"
+
+ARG GNAME="convgrp"
+
+ARG UID=1000
+
+ARG GID=1000
+
+RUN addgroup -g ${GID} ${GNAME} && \
+    adduser -D -H -u ${UID} -G ${GNAME} ${UNAME}
+
+USER ${UNAME}
+
 WORKDIR /app
 
 ENV BATCH=0

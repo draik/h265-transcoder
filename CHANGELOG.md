@@ -1,5 +1,14 @@
 # CHANGELOG
 
+## [0.4.0] Create a User and Add Config for SQLite Database and Log File
+- Docker: added a user to run the conversion tool, and have its UID and GID  
+  match the ownership of the mounted volume via *docker-compose.yaml*.  
+  Fixed the syntax in the *docker-compose.yaml* file.
+- config: added a configuration file for the temporary storage of the  
+  SQLite database and the logging file.
+- interfaces: updated to use the temporary storage location.
+- main: updated to use the temporary storage location.
+
 ## [0.3.4] Minor Change for Calling BATCH Environment Variable
 - tasks: used `os.getenv()` instead of `os.environ[]` for the 'BATCH' environment  
   variable, to set a default value of "0" (string zero).  

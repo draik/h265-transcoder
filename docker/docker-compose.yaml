@@ -4,9 +4,8 @@ services:
   converter:
     image: draikx21/h265-converter
     restart: unless-stopped
+    user: 1000:1000
     environment:
-      UID: 1000
-      GID: 1000
       BATCH: 0
       DEBUG: "False"
       DELETE: "False"

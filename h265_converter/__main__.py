@@ -3,14 +3,16 @@
 import logging
 import os
 import sys
+from pathlib import Path
 
-from h265_converter import tasks
+from h265_converter import config, tasks
 
 DEBUG = os.environ["DEBUG"].lower()
 DELETE = os.environ["DELETE"].lower()
-app_root = "/app/h265_converter"
-log_file = f"{app_root}/logs/convert.log"
-schema_file = f"{app_root}/schema.sql"
+
+log_file = Path(config.temp_dir.name) / config.log_filename
+db_file = Path(config.temp_dir.name) / config.db_filename
+schema_file = "/app/h265_converter/schema.sql"
 
 logger = logging.getLogger("app")
 logger.setLevel("DEBUG")

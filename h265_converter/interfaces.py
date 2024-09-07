@@ -2,9 +2,12 @@
 
 import logging
 import sqlite3
+from pathlib import Path
+
+from h265_converter import config
 
 logger = logging.getLogger("app")
-sqlite_db = "/app/h265_converter/queue.db"
+sqlite_db = Path(config.temp_dir.name) / config.db_filename
 
 
 class DatabaseInterface:
@@ -12,9 +15,7 @@ class DatabaseInterface:
 
     Ensure the SQLite database file is created, and a cursor is available.
     """
-    def __init__(
-        self
-    ):
+    def __init__(self):
         """Create the SQLite database."""
         logger.debug("Initializing DatabaseInterface.")
         self.db_file = sqlite_db
