@@ -47,10 +47,10 @@ for result in scan_list:
     path = result[0]
     filename = result[1]
     if filename.endswith(".mkv"):
-        queue_list.append([path, filename, "convert"])
+        queue_list.append([path, filename, "Y", "queued"])
     else:
-        filename, convert = tasks.read_metadata(path, filename)
-        queue_list.append([path, filename, convert])
+        filename, convert, status = tasks.read_metadata(path, filename)
+        queue_list.append([path, filename, convert, status])
 tasks.scan_sql_insert(queue_list)
 
 # Convert the video files
@@ -66,3 +66,5 @@ for queue in convert_list:
     convert_video = video_file.convert()
     if (convert_video == "done") and (DELETE == "true"):
         video_file.delete_original()
+
+tasks.final_count()

@@ -43,6 +43,7 @@ class Convert:
             0 - Conversion was successful.
             Any non-zero value is a failed conversion.
         """
+        status_update(self.path, self.filename, "active")
         convert_cmd = ["/usr/bin/ffmpeg",
                         "-i", f"{self.input_file}",
                         "-c:v", "libx265",
@@ -62,6 +63,7 @@ class Convert:
                            check=True,
                            text=True)
         except subprocess.CalledProcessError:
+            convert_status = "failed"
             convert_err_msg = f"Failed to convert '{self.input_file}'"
             logger.error(convert_err_msg)
             logger.exception(subprocess.CalledProcessError)
@@ -72,34 +74,17 @@ class Convert:
             else:
                 cleanup_msg = f"Nothing to remove. '{self.output_file}' not found."
                 logger.debug(cleanup_msg)
-            convert_status = "failed"
         else:
+            convert_status = "done"
             success_msg = f"'{self.input_file}' converted successfully."
             logger.info(success_msg)
-            convert_status = "done"
             input_size = get_file_size(self.input_file)
             output_size = get_file_size(self.output_file)
             diff_size = input_size-output_size
             diff_size_msg = f"Recovered {diff_size:,} bytes in conversion."
             logger.info(diff_size_msg)
         finally:
-            status_update_query = """UPDATE queue
-                                        SET status = ?
-                                        WHERE path = ? AND
-                                        filename = ? ;"""
-            status_update_data = (convert_status, self.path, self.filename)
-            with DatabaseInterface() as (_connect, db_cursor):
-                try:
-                    db_cursor.execute(status_update_query, status_update_data)
-                except sqlite3.Error:
-                    update_query_msg = f"{status_update_data=}"
-                    logger.debug(update_query_msg)
-                    logger.error("SQLite convert status update failed.")
-                    logger.exception(sqlite3.Error)
-                else:
-                    db_cursor.close()
-                    sql_update_msg = f"Updated status for '{self.filename}' to '{convert_status}'."
-                    logger.info(sql_update_msg)
+            status_update(self.path, self.filename, convert_status)
         return convert_status
 
 
@@ -148,7 +133,7 @@ def convert_batch() -> list:
         else:
             limit = None
 
-    batch_query = "SELECT path, filename FROM queue WHERE convert = 'convert' ;"
+    batch_query = "SELECT path, filename FROM queue WHERE convert = 'Y' AND status = 'queued' ;"
     if limit:
         batch_query = batch_query.replace(";", f"LIMIT {limit} ;")
     with DatabaseInterface() as (_connect, db_cursor):
@@ -163,6 +148,33 @@ def convert_batch() -> list:
             db_cursor.close()
             logger.info("Successfully retrieved batch of files to convert.")
             return batch_queue
+
+
+def final_count() -> None:
+    """Get the final count of video files per status."""
+    states = {
+        "done": 0,
+        "failed": 0,
+        "queued": 0,
+        "skipped": 0
+    }
+    status_query = "SELECT status, COUNT(status) FROM queue GROUP BY status ;"
+    with DatabaseInterface() as (_connect, db_cursor):
+        try:
+            status_result = db_cursor.execute(status_query)
+            status_data = status_result.fetchall()
+        except sqlite3.Error:
+            logger.error("SQLite status query failed.")
+            logger.exception(sqlite3.Error)
+        else:
+            db_cursor.close()
+
+    for values in status_data:
+        states[values[0]] = values[1]
+
+    final_count_msg = (f"{states["done"]} done, {states["failed"]} failed, "
+                       f"{states["queued"]} queued, {states["skipped"]} skipped.")
+    logger.info(final_count_msg)
 
 
 def get_file_size(filename: str) -> int:
@@ -238,15 +250,15 @@ def read_metadata(path: str, filename: str) -> tuple:
     if compressor_metadata == "hvc1":
         converted_msg = f"'{video_file}' is already converted."
         logger.info(converted_msg)
-        result = (filename, "skip")
+        result = (filename, "N", "skipped")
     elif compressor_metadata == "":
         unknown_msg = f"'{video_file}' returned empty Compressor ID. Verify video integrity."
         logger.warning(unknown_msg)
-        result = (filename, "skip")
+        result = (filename, "N", "skipped")
     else:
         convert_msg = f"'{video_file}' needs to be converted."
         logger.info(convert_msg)
-        result = (filename, "convert")
+        result = (filename, "Y", "queued")
     return result
 
 
@@ -256,9 +268,9 @@ def scan_sql_insert(insert_list: list) -> None:
     The list contains a list of values for the SQL insert.
     """
     insert_statement = """INSERT INTO queue (
-                            path, filename, convert)
-                        VALUES (
-                            ?, ?, ?);
+                                path, filename, convert, status)
+                            VALUES (
+                                ?, ?, ?, ?) ;
     """
 
     logger.debug("Inserting scanned results into SQLite database.")
@@ -297,3 +309,31 @@ def setup_database(schema_file: str) -> int:
             cursor.executescript(create_table)
             cursor.close()
         return 0
+
+
+def status_update(path: str, filename: str, status: str) -> None:
+    """Update the status of the video file.
+
+    Args:
+        path (str): path for the video file.
+        filename (str): filename for the video file.
+        status (str): new status for the video file.
+    """
+    status_update_query = """UPDATE queue
+                                SET status = ?
+                                WHERE path = ? AND
+                                filename = ? ;
+    """
+    status_update_data = (status, path, filename)
+    with DatabaseInterface() as (_connect, db_cursor):
+        try:
+            db_cursor.execute(status_update_query, status_update_data)
+        except sqlite3.Error:
+            update_query_msg = f"{status_update_data=}"
+            logger.debug(update_query_msg)
+            logger.error("SQLite convert status update failed.")
+            logger.exception(sqlite3.Error)
+        else:
+            db_cursor.close()
+            sql_update_msg = f"Updated status for '{path}/{filename}' to '{status}'."
+            logger.info(sql_update_msg)

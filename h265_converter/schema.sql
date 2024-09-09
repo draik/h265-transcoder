@@ -2,6 +2,6 @@ CREATE TABLE IF NOT EXISTS queue (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     path TEXT NOT NULL,
     filename TEXT UNIQUE NOT NULL,
-    convert TEXT DEFAULT "skip" NOT NULL,
-    status TEXT DEFAULT "skip" NOT NULL
+    convert TEXT DEFAULT "N" NOT NULL,
+    status TEXT DEFAULT "skipped" NOT NULL
 );

@@ -1,5 +1,18 @@
 # CHANGELOG
 
+## [0.5.0] Add and Update SQLite Queries for Status Updates
+- main: updated SQL queries to check for status field.  
+  Added a call to the `final_count()` fuction at the end of all conversions.
+- tasks: added a `status_update` function for setting and changing the status.  
+  Added the status field to the SQL queries to ensure the selected  
+  file is queued, and updated to "active" during the conversion stage.  
+  Updated the values on convert to be "Y" or "N" TEXT (no BOOL in SQLite)  
+  and status value of "skip" to "skipped".  
+  Changed the original values to "skipped" or "Y/N" as necessary.  
+  Added a `final_count()` function to log the total results of the last run.
+- schema: updated status to "skipped" default value, and  
+  changing the default convert value to "N" for boolean-type values.
+
 ## [0.4.1] Add SQLite Package
 - Docker: added sqlite package installation to use for troubleshooting  
   any issues with the SQLite database.
