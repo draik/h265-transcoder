@@ -47,6 +47,8 @@ for result in scan_list:
     path = result[0]
     filename = result[1]
     if filename.endswith(".mkv"):
+        convert_msg = f"'{path}/{filename}' needs to be converted."
+        logger.info(convert_msg)
         queue_list.append([path, filename, "Y", "queued"])
     else:
         filename, convert, status = tasks.read_metadata(path, filename)
