@@ -261,7 +261,8 @@ def read_metadata(path: str, filename: str) -> tuple:
         elif compressor_metadata == "":
             unknown_msg = f"'{video_file}' returned empty Compressor ID. Verifying video integrity."
             logger.warning(unknown_msg)
-            result = verify_metadata(filename)
+            verified_status = verify_metadata(video_file)
+            result = (filename, *verified_status)
         else:
             convert_msg = f"'{video_file}' needs to be converted."
             logger.info(convert_msg)
@@ -345,9 +346,10 @@ def status_update(path: str, filename: str, status: str) -> None:
             sql_update_msg = f"Updated status for '{path}/{filename}' to '{status}'."
             logger.info(sql_update_msg)
 
+
 def verify_metadata(filename: str) -> tuple:
     """Verify the metadata for an invalid video file type."""
-    file_type_cmd = ["/usr/bin/exiftool", "-s3", "DocType", filename]
+    file_type_cmd = ["/usr/bin/exiftool", "-s3", "-DocType", filename]
     file_type_sp = subprocess.run(file_type_cmd,
                                     capture_output = True,
                                     check = True,
@@ -356,9 +358,9 @@ def verify_metadata(filename: str) -> tuple:
     if file_type == "matroska":
         filetype_mkv_msg = f"'{filename}' is MKV file type, not MP4. Queued for conversion."
         logger.warning(filetype_mkv_msg)
-        convert_status = (filename, "Y", "queued")
+        convert_status = ("Y", "queued")
     else:
         filetype_unknown_msg = f"'{filename}' is '{file_type}' type. Status is unknown."
         logger.error(filetype_unknown_msg)
-        convert_status = (filename, "N", "unknown")
+        convert_status = ("N", "unknown")
     return convert_status

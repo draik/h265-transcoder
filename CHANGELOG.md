@@ -1,9 +1,15 @@
 # CHANGELOG
 
-## [0.6.0] Update Metadata Reading and Error Handling
+## [0.6.1] Fix Metadata Verification and Typos
+**DATE**: 2025-09-15
+- tasks: Updated the `verify_metadata()` function to only return  
+  the conversion statuses.  
+  Updated the `file_type_cmd` entry to add the missing hyphen.
+
+## [0.6.0] Update Metadata Reading and Error Handling [YANKED]
 **DATE**: 2024-09-14
 - main: moved the metadata debug log out of the function to reduce logging noise.
-- task: updated the reading of metadata when MP4 files were MKV files  
+- tasks: updated the reading of metadata when MP4 files were MKV files  
   with the MP4 file extension.  
   Updated the metadata check within try/except to handle exceptions when the  
   video file is of "data" type.  
