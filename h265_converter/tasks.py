@@ -156,7 +156,8 @@ def final_count() -> None:
         "done": 0,
         "failed": 0,
         "queued": 0,
-        "skipped": 0
+        "skipped": 0,
+        "unknown": 0
     }
     status_query = "SELECT status, COUNT(status) FROM queue GROUP BY status ;"
     with DatabaseInterface() as (_connect, db_cursor):
@@ -173,7 +174,8 @@ def final_count() -> None:
         states[values[0]] = values[1]
 
     final_count_msg = (f"{states["done"]} done, {states["failed"]} failed, "
-                       f"{states["queued"]} queued, {states["skipped"]} skipped.")
+                       f"{states["queued"]} queued, {states["skipped"]} skipped, "
+                       f"{states['unknown']} unknown.")
     logger.info(final_count_msg)
 
 
@@ -240,25 +242,30 @@ def read_metadata(path: str, filename: str) -> tuple:
         Tuple of the filename and conversion status.
     """
     video_file = f"{path}/{filename}"
-    logger.debug("Checking Compressor ID metadata.")
-    reader_cmd = ["/usr/bin/exiftool", "-s3", "-CompressorID", video_file]
-    metadata_sp = subprocess.run(reader_cmd,
-                                 capture_output = True,
-                                 check = True,
-                                 text = True)
-    compressor_metadata = metadata_sp.stdout.lower().strip()
-    if compressor_metadata == "hvc1":
-        converted_msg = f"'{video_file}' is already converted."
-        logger.info(converted_msg)
-        result = (filename, "N", "skipped")
-    elif compressor_metadata == "":
-        unknown_msg = f"'{video_file}' returned empty Compressor ID. Verify video integrity."
-        logger.warning(unknown_msg)
-        result = (filename, "N", "skipped")
+    try:
+        reader_cmd = ["/usr/bin/exiftool", "-s3", "-CompressorID", video_file]
+        metadata_sp = subprocess.run(reader_cmd,
+                                        capture_output = True,
+                                        check = True,
+                                        text = True)
+        compressor_metadata = metadata_sp.stdout.lower().strip()
+    except subprocess.CalledProcessError:
+        non_video_msg = f"'{video_file}' is not a not a video file. Verify file type."
+        logger.error(non_video_msg)
+        result = (filename, "N", "unknown")
     else:
-        convert_msg = f"'{video_file}' needs to be converted."
-        logger.info(convert_msg)
-        result = (filename, "Y", "queued")
+        if compressor_metadata == "hvc1":
+            converted_msg = f"'{video_file}' is already converted."
+            logger.info(converted_msg)
+            result = (filename, "N", "skipped")
+        elif compressor_metadata == "":
+            unknown_msg = f"'{video_file}' returned empty Compressor ID. Verifying video integrity."
+            logger.warning(unknown_msg)
+            result = verify_metadata(filename)
+        else:
+            convert_msg = f"'{video_file}' needs to be converted."
+            logger.info(convert_msg)
+            result = (filename, "Y", "queued")
     return result
 
 
@@ -337,3 +344,21 @@ def status_update(path: str, filename: str, status: str) -> None:
             db_cursor.close()
             sql_update_msg = f"Updated status for '{path}/{filename}' to '{status}'."
             logger.info(sql_update_msg)
+
+def verify_metadata(filename: str) -> tuple:
+    """Verify the metadata for an invalid video file type."""
+    file_type_cmd = ["/usr/bin/exiftool", "-s3", "DocType", filename]
+    file_type_sp = subprocess.run(file_type_cmd,
+                                    capture_output = True,
+                                    check = True,
+                                    text = True)
+    file_type = file_type_sp.stdout.lower().strip()
+    if file_type == "matroska":
+        filetype_mkv_msg = f"'{filename}' is MKV file type, not MP4. Queued for conversion."
+        logger.warning(filetype_mkv_msg)
+        convert_status = (filename, "Y", "queued")
+    else:
+        filetype_unknown_msg = f"'{filename}' is '{file_type}' type. Status is unknown."
+        logger.error(filetype_unknown_msg)
+        convert_status = (filename, "N", "unknown")
+    return convert_status

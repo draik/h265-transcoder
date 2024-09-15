@@ -42,6 +42,7 @@ logger.info("SQLite database is ready.")
 
 # Scan for video files to convert
 scan_list = tasks.path_scanner()
+logger.debug("Checking metadata on video files.")
 queue_list = []
 for result in scan_list:
     path = result[0]

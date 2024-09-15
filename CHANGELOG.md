@@ -1,5 +1,14 @@
 # CHANGELOG
 
+## [0.6.0] Update Metadata Reading and Error Handling
+**DATE**: 2024-09-14
+- main: moved the metadata debug log out of the function to reduce logging noise.
+- task: updated the reading of metadata when MP4 files were MKV files  
+  with the MP4 file extension.  
+  Updated the metadata check within try/except to handle exceptions when the  
+  video file is of "data" type.  
+  Added "unknown" as status for non-video files.
+
 ## [0.5.1] Add Logging for MKV Files
 **DATE**: 2024-09-14
 - main: added logging of MKV files being added to the conversion queue.  
