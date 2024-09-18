@@ -1,7 +1,13 @@
 # CHANGELOG
 
+## [0.6.2] Add Support for Reading Metadata of Large Files
+**DATE**: 2024-09-17
+- tasks: added "-api largefilesupport" to `read_metadata()` to resolve  
+  a false-positive of unknown status for files over 2GB.  
+  Cleaned up the exiftool command for readability on multiple lines.
+
 ## [0.6.1] Fix Metadata Verification and Typos
-**DATE**: 2025-09-15
+**DATE**: 2024-09-15
 - tasks: Updated the `verify_metadata()` function to only return  
   the conversion statuses.  
   Updated the `file_type_cmd` entry to add the missing hyphen.

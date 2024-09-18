@@ -243,7 +243,10 @@ def read_metadata(path: str, filename: str) -> tuple:
     """
     video_file = f"{path}/{filename}"
     try:
-        reader_cmd = ["/usr/bin/exiftool", "-s3", "-CompressorID", video_file]
+        reader_cmd = ["/usr/bin/exiftool",
+                      "-api", "largefilesupport",
+                      "-s3", "-CompressorID",
+                      video_file]
         metadata_sp = subprocess.run(reader_cmd,
                                         capture_output = True,
                                         check = True,
@@ -349,7 +352,9 @@ def status_update(path: str, filename: str, status: str) -> None:
 
 def verify_metadata(filename: str) -> tuple:
     """Verify the metadata for an invalid video file type."""
-    file_type_cmd = ["/usr/bin/exiftool", "-s3", "-DocType", filename]
+    file_type_cmd = ["/usr/bin/exiftool",
+                     "-s3", "-DocType",
+                     filename]
     file_type_sp = subprocess.run(file_type_cmd,
                                     capture_output = True,
                                     check = True,
