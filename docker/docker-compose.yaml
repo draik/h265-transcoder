@@ -7,8 +7,10 @@ services:
     user: 1000:1000
     environment:
       BATCH: 0
+      CONVERT: "True"
       DEBUG: "False"
       DELETE: "False"
+      RETRY_FAILED: "False"
       TZ: "UTC"
     volumes:
       - mnt:/mnt

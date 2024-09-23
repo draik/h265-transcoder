@@ -7,8 +7,9 @@ from pathlib import Path
 
 from h265_converter import config, tasks
 
+CONVERT = os.environ["CONVERT"].lower()
 DEBUG = os.environ["DEBUG"].lower()
-DELETE = os.environ["DELETE"].lower()
+RETRY_FAILED = os.environ["RETRY_FAILED"].lower()
 
 log_file = Path(config.temp_dir.name) / config.log_filename
 db_file = Path(config.temp_dir.name) / config.db_filename
@@ -41,7 +42,7 @@ tasks.setup_database(schema_file)
 logger.info("SQLite database is ready.")
 
 # Scan for video files to convert
-scan_list = tasks.path_scanner()
+scan_list = tasks.scan_directory()
 logger.debug("Checking metadata on video files.")
 queue_list = []
 for result in scan_list:
@@ -54,20 +55,22 @@ for result in scan_list:
     else:
         filename, convert, status = tasks.read_metadata(path, filename)
         queue_list.append([path, filename, convert, status])
-tasks.scan_sql_insert(queue_list)
+tasks.insert_scan_results(queue_list)
 
-# Convert the video files
-convert_list = tasks.convert_batch()
-if not convert_list:
-    logger.warning("No files marked for conversion. Exiting.")
-    raise SystemExit(1)
+# Convert the video file or only update the metadata
+if CONVERT == "true":
+    convert_list = tasks.get_batch()
+    if convert_list:
+        tasks.convert_queue(convert_list)
+        if RETRY_FAILED == "true":
+            retry_conversion = tasks.retry_failed()
+            if retry_conversion:
+                tasks.convert_queue(retry_conversion)
+    else:
+        logger.warning("No video files found. Exiting.")
+        raise SystemExit(1)
+else:
+    tasks.update_metadata()
 
-for queue in convert_list:
-    path = queue[0]
-    filename = queue[1]
-    video_file = tasks.Convert(path, filename)
-    convert_video = video_file.convert()
-    if (convert_video == "done") and (DELETE == "true"):
-        video_file.delete_original()
-
+# Output the status count
 tasks.final_count()

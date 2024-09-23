@@ -22,9 +22,13 @@ WORKDIR /app
 
 ENV BATCH=0
 
+ENV CONVERT="True"
+
 ENV DEBUG="False"
 
 ENV DELETE="False"
+
+ENV RETRY_FAILED="False"
 
 ENV TZ="UTC"
 

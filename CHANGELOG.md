@@ -1,5 +1,17 @@
 # CHANGELOG
 
+## [0.7.0] Add Options to Retry Failed and Only Update Metadata
+**DATE**: 2024-09-22
+- Docker: added `CONVERT` and `RETRY_FAILED` environment variables.
+- tasks: added `update_metadata` function to only update metadata, no conversions.  
+  Added `retry_failed` function to call the `Convert.convert` method again.  
+  Updated and organized function names for naming convention  
+  to begin with the action.  
+  Added `convert_video` function to perform the conversion task itself.
+- main: added condition for `CONVERT` value to start converting files ("True"),  
+  or only update the metadata ("False").  
+  Updated function names changed in tasks.
+
 ## [0.6.2] Add Support for Reading Metadata of Large Files
 **DATE**: 2024-09-17
 - tasks: added "-api largefilesupport" to `read_metadata()` to resolve  

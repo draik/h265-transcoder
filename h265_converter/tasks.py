@@ -43,7 +43,7 @@ class Convert:
             0 - Conversion was successful.
             Any non-zero value is a failed conversion.
         """
-        status_update(self.path, self.filename, "active")
+        update_status(self.path, self.filename, "active")
         convert_cmd = ["/usr/bin/ffmpeg",
                         "-i", f"{self.input_file}",
                         "-c:v", "libx265",
@@ -84,7 +84,7 @@ class Convert:
             diff_size_msg = f"Recovered {diff_size:,} bytes in conversion."
             logger.info(diff_size_msg)
         finally:
-            status_update(self.path, self.filename, convert_status)
+            update_status(self.path, self.filename, convert_status)
         return convert_status
 
 
@@ -103,7 +103,51 @@ class Convert:
         logger.info(cleanup_msg)
 
 
-def convert_batch() -> list:
+def convert_queue(queue_list: list) -> None:
+    """Perform the conversion from the list of files.
+
+    Args:
+        queue_list (list): list of tuples containing a path and filename.
+    """
+    for entry in queue_list:
+        path = entry[0]
+        filename = entry[1]
+        video_file = Convert(path, filename)
+        convert_video = video_file.convert()
+        if (convert_video == "done") and (os.environ["DELETE"].lower == "true"):
+            video_file.delete_original()
+
+
+def final_count() -> None:
+    """Get the final count of video files per status."""
+    states = {
+        "done": 0,
+        "failed": 0,
+        "queued": 0,
+        "skipped": 0,
+        "unknown": 0
+    }
+    status_query = "SELECT status, COUNT(status) FROM queue GROUP BY status ;"
+    with DatabaseInterface() as (_connect, db_cursor):
+        try:
+            status_result = db_cursor.execute(status_query)
+            status_data = status_result.fetchall()
+        except sqlite3.Error:
+            logger.error("SQLite status query failed.")
+            logger.exception(sqlite3.Error)
+        else:
+            db_cursor.close()
+
+    for values in status_data:
+        states[values[0]] = values[1]
+
+    final_count_msg = (f"{states["done"]} done, {states["failed"]} failed, "
+                       f"{states["queued"]} queued, {states["skipped"]} skipped, "
+                       f"{states['unknown']} unknown.")
+    logger.info(final_count_msg)
+
+
+def get_batch() -> list:
     """Obtain a list of files to convert based on batch limit.
 
     Returns:
@@ -150,35 +194,6 @@ def convert_batch() -> list:
             return batch_queue
 
 
-def final_count() -> None:
-    """Get the final count of video files per status."""
-    states = {
-        "done": 0,
-        "failed": 0,
-        "queued": 0,
-        "skipped": 0,
-        "unknown": 0
-    }
-    status_query = "SELECT status, COUNT(status) FROM queue GROUP BY status ;"
-    with DatabaseInterface() as (_connect, db_cursor):
-        try:
-            status_result = db_cursor.execute(status_query)
-            status_data = status_result.fetchall()
-        except sqlite3.Error:
-            logger.error("SQLite status query failed.")
-            logger.exception(sqlite3.Error)
-        else:
-            db_cursor.close()
-
-    for values in status_data:
-        states[values[0]] = values[1]
-
-    final_count_msg = (f"{states["done"]} done, {states["failed"]} failed, "
-                       f"{states["queued"]} queued, {states["skipped"]} skipped, "
-                       f"{states['unknown']} unknown.")
-    logger.info(final_count_msg)
-
-
 def get_file_size(filename: str) -> int:
     """Get the file size of the input and output file.
 
@@ -203,32 +218,32 @@ def get_file_size(filename: str) -> int:
     return byte_size
 
 
-def path_scanner() -> list:
-    """Scan for video files.
+def insert_scan_results(insert_list: list) -> None:
+    """Insert scan results list into SQLite database.
 
-    Creates a tuple of the absolute path and filename,
-    then appends to the list of the scan results.
-
-    Returns:
-        List of tuples containing the absolute path and filename.
+    The list contains a list of values for the SQL insert.
     """
-    scan_path = "/mnt"
-    video_extensions = (".mkv", ".mp4")
-    video_list = []
+    insert_statement = """INSERT INTO queue (
+                                path, filename, convert, status)
+                            VALUES (
+                                ?, ?, ?, ?) ;
+    """
 
-    logger.info("Beginning scan...")
-    for root, _dirs, files in os.walk(scan_path):
-        for filename in files:
-            if filename.endswith(video_extensions):
-                video_list.append((root, filename))
-                found_msg = f"Found '{root}/{filename}'."
-                logger.info(found_msg)
-    scan_results_msg = f"Scan complete. Found {len(video_list)} video file(s)."
-    logger.info(scan_results_msg)
-    if len(video_list) == 0:
-        logger.warning("Empty scan results. Is the volume mounted? Exiting.")
-        raise SystemExit(1)
-    return video_list
+    logger.debug("Inserting scanned results into SQLite database.")
+
+    with DatabaseInterface() as (_connect, db_cursor):
+        try:
+            db_cursor.executemany(insert_statement, insert_list)
+        except sqlite3.IntegrityError:
+            logger.error("Duplicate filename found in SQLite table.")
+        except sqlite3.Error:
+            logger.error("SQLite insert execution failed.")
+            logger.exception(sqlite3.Error)
+            raise SystemExit(1) from sqlite3.Error
+        else:
+            db_cursor.close()
+        finally:
+            logger.info("Successfully inserted list into SQLite 'queue' table.")
 
 
 def read_metadata(path: str, filename: str) -> tuple:
@@ -273,32 +288,59 @@ def read_metadata(path: str, filename: str) -> tuple:
     return result
 
 
-def scan_sql_insert(insert_list: list) -> None:
-    """Insert scan results list into SQLite database.
+def retry_failed() -> list:
+    """Retry converting files that failed converting on the first attempt.
 
-    The list contains a list of values for the SQL insert.
+    Returns:
+        list of tuples containing the path and filename of failed conversions.
     """
-    insert_statement = """INSERT INTO queue (
-                                path, filename, convert, status)
-                            VALUES (
-                                ?, ?, ?, ?) ;
-    """
-
-    logger.debug("Inserting scanned results into SQLite database.")
+    failed_status_query = "SELECT path, filename FROM queue WHERE status = 'failed';"
 
     with DatabaseInterface() as (_connect, db_cursor):
         try:
-            db_cursor.executemany(insert_statement, insert_list)
-        except sqlite3.IntegrityError:
-            logger.error("Duplicate filename found in SQLite table.")
+            failed_status_result = db_cursor.execute(failed_status_query)
+            failed_status_data = failed_status_result.fetchall()
         except sqlite3.Error:
-            logger.error("SQLite insert execution failed.")
+            logger.error("SQLite status query failed.")
             logger.exception(sqlite3.Error)
-            raise SystemExit(1) from sqlite3.Error
         else:
             db_cursor.close()
-        finally:
-            logger.info("Successfully inserted list into SQLite 'queue' table.")
+
+    if failed_status_data:
+        failed_results_msg = f"Found {len(failed_status_data)} failed conversion(s)."
+        logger.info(failed_results_msg)
+    else:
+        logger.info("No failed conversions.")
+
+    return failed_status_data
+
+
+def scan_directory() -> list:
+    """Scan for video files.
+
+    Creates a tuple of the absolute path and filename,
+    then appends to the list of the scan results.
+
+    Returns:
+        List of tuples containing the absolute path and filename.
+    """
+    scan_path = "/mnt"
+    video_extensions = (".mkv", ".mp4")
+    video_list = []
+
+    logger.info("Beginning scan...")
+    for root, _dirs, files in os.walk(scan_path):
+        for filename in files:
+            if filename.endswith(video_extensions):
+                video_list.append((root, filename))
+                found_msg = f"Found '{root}/{filename}'."
+                logger.info(found_msg)
+    scan_results_msg = f"Scan complete. Found {len(video_list)} video file(s)."
+    logger.info(scan_results_msg)
+    if len(video_list) == 0:
+        logger.warning("Empty scan results. Is the volume mounted? Exiting.")
+        raise SystemExit(1)
+    return video_list
 
 
 def setup_database(schema_file: str) -> int:
@@ -322,7 +364,49 @@ def setup_database(schema_file: str) -> int:
         return 0
 
 
-def status_update(path: str, filename: str, status: str) -> None:
+def update_metadata() -> None:
+    """Update the metadata of the video file."""
+    metadata_query = "SELECT path, filename FROM queue ;"
+    with DatabaseInterface() as (_connect, db_cursor):
+        try:
+            metadata_result = db_cursor.execute(metadata_query)
+            metadata_queue = metadata_result.fetchall()
+        except sqlite3.Error:
+            logger.error("SQLite metadata query failed.")
+            logger.exception(sqlite3.Error)
+            raise SystemExit(1) from sqlite3.Error
+        else:
+            db_cursor.close()
+            logger.debug("Successfully retrieved list of files to update metadata.")
+
+    for file in metadata_queue:
+        path = file[0]
+        filename = file[1]
+        video_file = f"{path}/{filename}"
+        if filename.endswith(".mp4"):
+            try:
+                video_title = filename.removesuffix(".mp4")
+                update_metadata_cmd = ["/usr/bin/exiftool",
+                                        "-overwrite_original",
+                                        f"-title={video_title}",
+                                        "-comment=",
+                                        video_file]
+                subprocess.run(update_metadata_cmd,
+                                capture_output = True,
+                                check = True,
+                                text = True)
+            except subprocess.CalledProcessError:
+                update_metadata_err = f"Invalid MP4 file type for '{video_file}'. Convert to update the metadata."
+                logger.error(update_metadata_err)
+            else:
+                update_metadata_msg = f"Updated metadata for '{video_file}'."
+                logger.info(update_metadata_msg)
+        else:
+            file_type_warn = f"'{video_file}' is not MP4. Convert to update the metadata."
+            logger.warning(file_type_warn)
+
+
+def update_status(path: str, filename: str, status: str) -> None:
     """Update the status of the video file.
 
     Args:
