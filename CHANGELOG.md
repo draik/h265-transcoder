@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## [0.7.1] Add Package Upgrade to Image Build and Fix a Variable
+**DATE**: 2024-09-24
+- Docker: added `apk upgrade` command after repository update.
+- tasks: updated the insert statement with list count.  
+  Fixed `DELETE` environment variable with `.lower()` function.
+
 ## [0.7.0] Add Options to Retry Failed and Only Update Metadata
 **DATE**: 2024-09-22
 - Docker: added `CONVERT` and `RETRY_FAILED` environment variables.

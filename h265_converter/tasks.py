@@ -10,6 +10,7 @@ from h265_converter.interfaces import DatabaseInterface
 
 logger = logging.getLogger("app")
 BATCH = os.getenv("BATCH", "0")
+DELETE = os.environ["DELETE"].lower()
 
 
 class Convert:
@@ -114,7 +115,7 @@ def convert_queue(queue_list: list) -> None:
         filename = entry[1]
         video_file = Convert(path, filename)
         convert_video = video_file.convert()
-        if (convert_video == "done") and (os.environ["DELETE"].lower == "true"):
+        if (convert_video == "done") and (DELETE == "true"):
             video_file.delete_original()
 
 
@@ -243,7 +244,8 @@ def insert_scan_results(insert_list: list) -> None:
         else:
             db_cursor.close()
         finally:
-            logger.info("Successfully inserted list into SQLite 'queue' table.")
+            insert_msg = f"Successfully inserted {len(insert_list)} entries into SQLite 'queue' table."
+            logger.info(insert_msg)
 
 
 def read_metadata(path: str, filename: str) -> tuple:
