@@ -1,10 +1,13 @@
 """Defines all of the jobs and shared functions."""
 
+import datetime
 import logging
 import os
 import sqlite3
 import subprocess
 from pathlib import Path
+
+from ffmpeg import FFmpeg, FFmpegError, Progress
 
 from h265_converter.interfaces import DatabaseInterface
 
@@ -41,33 +44,63 @@ class Convert:
         Comment tag will be cleared.
 
         Returns:
-            0 - Conversion was successful.
-            Any non-zero value is a failed conversion.
+            convert_status: "done" for success, "failed" for errors.
         """
         update_status(self.path, self.filename, "active")
-        convert_cmd = ["/usr/bin/ffmpeg",
-                        "-i", f"{self.input_file}",
-                        "-c:v", "libx265",
-                        "-vtag", "hvc1",
-                        "-c:a", "copy",
-                        "-metadata", f"title={self.video_title}",
-                        "-metadata", "comment=",
-                        "-f", "mp4",
-                        f"{self.output_file}"]
-        convert_cmd_msg = f"{convert_cmd=}"
-        logger.debug(convert_cmd_msg)
+        ffmpeg = (
+            FFmpeg()
+            .option("y")
+            .input(self.input_file)
+            .output(
+                self.output_file,
+                {
+                    "codec:v": "libx265",
+                    "vtag": "hvc1",
+                    "codec:a": "copy",
+                    "metadata": [
+                                    f"title={self.video_title}",
+                                    "comment="
+                                 ]
+                }
+            )
+        )
+
+        @ffmpeg.on("start")
+        def on_start(command: list[str]):
+            ffmpeg_cmd_msg = f"{command=}"
+            logger.debug(ffmpeg_cmd_msg)
+
+        @ffmpeg.on("progress")
+        def on_progress(progress: Progress):
+            frame = progress.frame
+            fps = int(progress.fps)
+            size = (str(progress.size) + "B")
+            try:
+                seconds = datetime.datetime.strptime(str(progress.time), "%H:%M:%S.%f")
+            except ValueError:
+                seconds = datetime.datetime.strptime(str(progress.time), "%H:%M:%S")
+            time = seconds.strftime("%H:%M:%S.") + str(seconds.strftime("%f"))[:2]
+            bitrate = str(progress.bitrate) + "kb/s"
+            speed = (str(progress.speed) + "x")
+            progress_bar = (
+                f"File={self.filename} "
+                f"Frame={frame} "
+                f"FPS={fps} "
+                f"Size={size} "
+                f"Time={time} "
+                f"Bitrate={bitrate} "
+                f"Speed={speed}"
+            )
+            logger.debug(progress_bar)
+
         try:
             convert_msg = f"Converting '{self.input_file}' to '{self.output_file}'."
             logger.info(convert_msg)
-            subprocess.run(convert_cmd,
-                           capture_output=True,
-                           check=True,
-                           text=True)
-        except subprocess.CalledProcessError:
+            ffmpeg.execute()
+        except FFmpegError:
             convert_status = "failed"
             convert_err_msg = f"Failed to convert '{self.input_file}'"
             logger.error(convert_err_msg)
-            logger.exception(subprocess.CalledProcessError)
             if Path(self.output_file).exists():
                 logger.debug("Removing the failed output file.")
                 Path(self.output_file).unlink()

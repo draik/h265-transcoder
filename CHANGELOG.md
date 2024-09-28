@@ -1,5 +1,12 @@
 # CHANGELOG
 
+## [0.8.0] Update to Use python-ffmpeg for Transcoding
+**DATE**: 2024-09-27
+- Docker: added pip installation of `python-ffmpeg`.
+- tasks: updated the use of `python-ffmpeg` instead of `subprocess` for  
+  the transcoding of video files.  
+  Added transcoding status updates to debug logging.
+
 ## [0.7.1] Add Package Upgrade to Image Build and Fix a Variable
 **DATE**: 2024-09-24
 - Docker: added `apk upgrade` command after repository update.
