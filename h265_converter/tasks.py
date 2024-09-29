@@ -60,7 +60,8 @@ class Convert:
                     "metadata": [
                                     f"title={self.video_title}",
                                     "comment="
-                                 ]
+                                 ],
+                    "f": "mp4"
                 }
             )
         )

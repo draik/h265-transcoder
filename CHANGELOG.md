@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## [0.8.1] HOTFIX to ensure MP4 format output
+**DATE**: 2024-09-28
+- tasks: added the MP4 formatting to the transcoded output
+
 ## [0.8.0] Update to Use python-ffmpeg for Transcoding
 **DATE**: 2024-09-27
 - Docker: added pip installation of `python-ffmpeg`.
