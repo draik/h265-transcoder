@@ -10,7 +10,11 @@ services:
       CONVERT: "True"
       DEBUG: "False"
       DELETE: "False"
+      PERSIST: "False"
       RETRY_FAILED: "False"
       TZ: "UTC"
     volumes:
-      - mnt:/mnt
+      - data:/tmp
+      - /mnt:/mnt
+volumes:
+  data:

@@ -2,24 +2,18 @@
 
 import logging
 import sqlite3
-from pathlib import Path
-
-from h265_converter import config
 
 logger = logging.getLogger("app")
-sqlite_db = Path(config.temp_dir.name) / config.db_filename
-
 
 class DatabaseInterface:
-    """Setup the SQLite database.
+    """Interface with the SQLite database.
 
-    Ensure the SQLite database file is created, and a cursor is available.
+    Ensure the SQLite database file is accessible, and a cursor is available.
     """
-    def __init__(self):
-        """Create the SQLite database."""
+    def __init__(self, db_file: str):
+        """Create the SQLite database connection."""
         logger.debug("Initializing DatabaseInterface.")
-        self.db_file = sqlite_db
-
+        self.db_file = db_file
         self.db_connect = None
         self.db_cursor = None
 

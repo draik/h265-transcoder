@@ -1,5 +1,7 @@
 import tempfile
 
 temp_dir = tempfile.TemporaryDirectory(prefix="convert-")
-db_filename = "convert.db"
 log_filename = "convert.log"
+schema_file = "/app/h265_converter/schema.sql"
+persist_db = "/tmp/convert.db"
+temp_db = "convert.db"

@@ -7,13 +7,12 @@ from pathlib import Path
 
 from h265_converter import config, tasks
 
-CONVERT = os.environ["CONVERT"].lower()
-DEBUG = os.environ["DEBUG"].lower()
-RETRY_FAILED = os.environ["RETRY_FAILED"].lower()
+CONVERT = bool(os.environ["CONVERT"].lower() == "true")
+DEBUG = bool(os.environ["DEBUG"].lower() == "true")
+PERSIST = bool(os.environ["PERSIST"].lower() == "true")
+RETRY_FAILED = bool(os.environ["RETRY_FAILED"].lower() == "true")
 
 log_file = Path(config.temp_dir.name) / config.log_filename
-db_file = Path(config.temp_dir.name) / config.db_filename
-schema_file = "/app/h265_converter/schema.sql"
 
 logger = logging.getLogger("app")
 logger.setLevel("DEBUG")
@@ -27,7 +26,7 @@ logger.addHandler(stdout_handler)
 
 # Logging to a file defaults to INFO
 file_handler = logging.FileHandler(filename=log_file, mode="a", encoding="utf-8")
-if DEBUG == "true":
+if DEBUG:
     file_handler.setLevel("DEBUG")
 else:
     file_handler.setLevel("INFO")
@@ -38,39 +37,44 @@ file_handler.setFormatter(file_format)
 logger.addHandler(file_handler)
 
 # Setup SQLite database
-tasks.setup_database(schema_file)
-logger.info("SQLite database is ready.")
-
-# Scan for video files to convert
-scan_list = tasks.scan_directory()
-logger.debug("Checking metadata on video files.")
-queue_list = []
-for result in scan_list:
-    path = result[0]
-    filename = result[1]
-    if filename.endswith(".mkv"):
-        convert_msg = f"'{path}/{filename}' needs to be converted."
-        logger.info(convert_msg)
-        queue_list.append([path, filename, "Y", "queued"])
+sqlite_db = ""
+if PERSIST:
+    sqlite_db = config.persist_db
+    queue_count = tasks.verify_database()
+    if queue_count == 0:
+        empty_table_msg = f"SQLite DB '{sqlite_db}' is empty. Setting up."
+        logger.info(empty_table_msg)
+        tasks.scan_directory(sqlite_db)
     else:
-        filename, convert, status = tasks.read_metadata(path, filename)
-        queue_list.append([path, filename, convert, status])
-tasks.insert_scan_results(queue_list)
+        queue_msg = f"Found {queue_count} video files in queue."
+        logger.info(queue_msg)
+else:
+    sqlite_db = Path(config.temp_dir.name) / config.temp_db
+    temp_db_msg = f"Setting up temporary SQLite database at '{sqlite_db}'"
+    logger.debug(temp_db_msg)
+    tasks.setup_database(sqlite_db)
+    tasks.scan_directory(sqlite_db)
+
+# Convert the failed video files in queue
+if PERSIST and RETRY_FAILED:
+    logger.info("Retrying failed video files.")
+    retry_transcoding = tasks.retry_failed(sqlite_db)
+    if retry_transcoding:
+        tasks.convert_queue(sqlite_db, retry_transcoding)
 
 # Convert the video file or only update the metadata
-if CONVERT == "true":
-    convert_list = tasks.get_batch()
+if CONVERT:
+    convert_list = tasks.get_batch(sqlite_db)
     if convert_list:
-        tasks.convert_queue(convert_list)
-        if RETRY_FAILED == "true":
-            retry_conversion = tasks.retry_failed()
+        tasks.convert_queue(sqlite_db, convert_list)
+        if RETRY_FAILED:
+            retry_conversion = tasks.retry_failed(sqlite_db)
             if retry_conversion:
-                tasks.convert_queue(retry_conversion)
+                tasks.convert_queue(sqlite_db, retry_conversion)
     else:
-        logger.warning("No video files found. Exiting.")
-        raise SystemExit(1)
+        logger.warning("No video files to convert. Exiting.")
 else:
-    tasks.update_metadata()
+    tasks.update_metadata(sqlite_db)
 
 # Output the status count
-tasks.final_count()
+tasks.final_results(sqlite_db)

@@ -30,6 +30,8 @@ ENV DEBUG="False"
 
 ENV DELETE="False"
 
+ENV PERSIST="False"
+
 ENV RETRY_FAILED="False"
 
 ENV TZ="UTC"
