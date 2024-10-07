@@ -1,17 +1,15 @@
----
-
 services:
-  converter:
-    image: draikx21/h265-converter
+  transcoder:
+    image: draikx21/h265-transcoder
     restart: unless-stopped
     user: 1000:1000
     environment:
       BATCH: 0
-      CONVERT: "True"
       DEBUG: "False"
       DELETE: "False"
       PERSIST: "False"
       RETRY_FAILED: "False"
+      TRANSCODE: "True"
       TZ: "UTC"
     volumes:
       - data:/tmp

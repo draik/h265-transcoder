@@ -1,5 +1,17 @@
 # CHANGELOG
 
+## [0.10.0] Rename Convert to Transcode and Add Transcode Log Level
+**DATE**: 2024-10-06
+- REPOSITORY: updated usage of "convert" to "transcode" for correct description.  
+  Repository renamed to **h265-transcoder**.
+- README: updated usage of "convert" to "transcode" for correct description.
+- Docker: updated `CONVERT` to `TRANSCODE` environment variable.  
+  Renamed Docker image name to **draikx21/h265-transcoder**.  
+  Renamed user, group, and service name.
+- main: updated to use the logging configuration from **log.py**.  
+- tasks: updated transcoding status to customer `transcode` log level.
+- log: added **log.py** for the logging configuration.
+
 ## [0.9.0] Add Persistent Database and Various Improvements
 **DATE**: 2024-10-05
 - CHANGELOG: marked v0.8.0 as YANKED due to the issue patched in v0.8.1.  

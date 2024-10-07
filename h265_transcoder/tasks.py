@@ -9,18 +9,18 @@ from pathlib import Path
 
 from ffmpeg import FFmpeg, FFmpegError, Progress
 
-from h265_converter import config
-from h265_converter.interfaces import DatabaseInterface
+from h265_transcoder import config
+from h265_transcoder.interfaces import DatabaseInterface
 
 logger = logging.getLogger("app")
 BATCH = os.getenv("BATCH", "0")
 DELETE = bool(os.environ["DELETE"].lower() == "true")
 
 
-class Convert:
-    """Instantiate the video file for editing."""
+class Transcode:
+    """Instantiate the video file for transcoding."""
     def __init__(self, sqlite_db: str, path: str, filename: str) -> None:
-        """Setup the path and filename instance for video conversion.
+        """Setup the path and filename instance for video transcoding.
 
         Args:
             sqlite_db (str): SQLite database file to use.
@@ -39,15 +39,15 @@ class Convert:
             self.video_title = self.filename.removesuffix(".mp4")
 
 
-    def convert(self) -> str:
-        """Convert video file to h.265 HVC1 MP4.
+    def transcode(self) -> str:
+        """Transcode the video file to h.265 HVC1 MP4.
 
-        During the conversion, metadata will be cleaned up.
+        During the transcoding, metadata will be cleaned up.
         Title tag will match the filename without an extension.
         Comment tag will be cleared.
 
         Returns:
-            convert_status: "done" for success, "failed" for errors.
+            transcode_status: "done" for success, "failed" for errors.
         """
         update_status(self.sqlite_db, self.path, self.filename, "active")
         ffmpeg = (
@@ -95,16 +95,16 @@ class Convert:
                 f"Bitrate={bitrate} "
                 f"Speed={speed}"
             )
-            logger.debug(progress_bar)
+            logger.transcode(progress_bar)
 
         try:
-            convert_msg = f"Converting '{self.input_file}' to '{self.output_file}'."
-            logger.info(convert_msg)
+            transcode_msg = f"Transcoding '{self.input_file}' to '{self.output_file}'."
+            logger.info(transcode_msg)
             ffmpeg.execute()
         except FFmpegError:
-            convert_status = "failed"
-            convert_err_msg = f"Failed to convert '{self.input_file}'"
-            logger.error(convert_err_msg)
+            transcode_status = "failed"
+            transcode_err_msg = f"Failed to transcode '{self.input_file}'"
+            logger.error(transcode_err_msg)
             if Path(self.output_file).exists():
                 logger.debug("Removing the failed output file.")
                 Path(self.output_file).unlink()
@@ -113,24 +113,24 @@ class Convert:
                 cleanup_msg = f"Nothing to remove. '{self.output_file}' not found."
                 logger.debug(cleanup_msg)
         else:
-            convert_status = "done"
-            success_msg = f"'{self.input_file}' converted successfully."
+            transcode_status = "done"
+            success_msg = f"'{self.input_file}' transcoded successfully."
             logger.info(success_msg)
             input_size = get_file_size(self.input_file)
             output_size = get_file_size(self.output_file)
             diff_size = input_size-output_size
-            diff_size_msg = f"Recovered {diff_size:,} bytes in conversion."
+            diff_size_msg = f"Recovered {diff_size:,} bytes in trandcoding."
             logger.info(diff_size_msg)
         finally:
-            update_status(self.sqlite_db, self.path, self.filename, convert_status)
-        return convert_status
+            update_status(self.sqlite_db, self.path, self.filename, transcode_status)
+        return transcode_status
 
 
     def delete_original(self) -> None:
         """Remove the original input file.
 
-        MKV conversion outputs to MP4 file, and the original MKV will be deleted.
-        MP4 conversion outputs to ".h265" MP4, which will overwrite the ".mp4" file.
+        MKV transcoding outputs to MP4 file, and the original MKV will be deleted.
+        MP4 transcoding outputs to ".h265" MP4, which will overwrite the ".mp4" file.
         """
         if self.input_file.endswith(".mkv"):
             Path(self.input_file).unlink()
@@ -139,22 +139,6 @@ class Convert:
             Path(self.output_file).replace(self.input_file)
             cleanup_msg = f"Renamed '{self.output_file}' to '{self.input_file}'."
         logger.info(cleanup_msg)
-
-
-def convert_queue(sqlite_db: str, queue_list: list) -> None:
-    """Perform the conversion from the list of files.
-
-    Args:
-        sqlite_db (str): SQLite database file to use.
-        queue_list (list): list of tuples containing a path and filename.
-    """
-    for entry in queue_list:
-        path = entry[0]
-        filename = entry[1]
-        video_file = Convert(sqlite_db, path, filename)
-        convert_video = video_file.convert()
-        if (convert_video == "done") and (DELETE):
-            video_file.delete_original()
 
 
 def final_results(sqlite_db: str) -> None:
@@ -200,13 +184,13 @@ def final_results(sqlite_db: str) -> None:
 
 
 def get_batch(sqlite_db: str) -> list:
-    """Obtain a list of files to convert based on batch limit.
+    """Obtain a list of files to transcode based on batch limit.
 
     Args:
         sqlite_db (str): SQLite database file to use.
 
     Returns:
-        List of tuples containing the '(path, filename)' of files to convert.
+        List of tuples containing the '(path, filename)' of files to transcode.
     """
     try:
         batch = int(BATCH)
@@ -232,7 +216,7 @@ def get_batch(sqlite_db: str) -> list:
         else:
             limit = None
 
-    batch_query = "SELECT path, filename FROM queue WHERE convert = 'Y' AND status = 'queued' ;"
+    batch_query = "SELECT path, filename FROM queue WHERE transcode = 'Y' AND status = 'queued' ;"
     if limit:
         batch_query = batch_query.replace(";", f"LIMIT {limit} ;")
     with DatabaseInterface(sqlite_db) as (_connect, db_cursor):
@@ -240,12 +224,12 @@ def get_batch(sqlite_db: str) -> list:
             batch_result = db_cursor.execute(batch_query)
             batch_queue = batch_result.fetchall()
         except sqlite3.Error:
-            logger.error("SQLite convert selection query failed.")
+            logger.error("SQLite transcode selection query failed.")
             logger.exception(sqlite3.Error)
             raise SystemExit(1) from sqlite3.Error
         else:
             db_cursor.close()
-            logger.info("Successfully retrieved batch of files to convert.")
+            logger.info("Successfully retrieved batch of files to transcode.")
             return batch_queue
 
 
@@ -281,7 +265,7 @@ def insert_scan_results(sqlite_db: str, insert_list: list) -> None:
         insert_list (list): list containing a list of scan results.
     """
     insert_statement = """INSERT INTO queue (
-                                path, filename, convert, status)
+                                path, filename, transcode, status)
                             VALUES (
                                 ?, ?, ?, ?) ;
     """
@@ -312,7 +296,7 @@ def read_metadata(path: str, filename: str) -> tuple:
         filename (str): Filename for the video.
 
     Returns:
-        Tuple of the filename and conversion status.
+        Tuple of the filename and transcoding status.
     """
     video_file = f"{path}/{filename}"
     try:
@@ -331,8 +315,8 @@ def read_metadata(path: str, filename: str) -> tuple:
         result = (filename, "N", "unknown")
     else:
         if compressor_metadata == "hvc1":
-            converted_msg = f"'{video_file}' is already converted."
-            logger.info(converted_msg)
+            transcoded_msg = f"'{video_file}' is already transcoded."
+            logger.info(transcoded_msg)
             result = (filename, "N", "skipped")
         elif compressor_metadata == "":
             unknown_msg = f"'{video_file}' returned empty Compressor ID. Verifying video integrity."
@@ -340,20 +324,20 @@ def read_metadata(path: str, filename: str) -> tuple:
             verified_status = verify_metadata(video_file)
             result = (filename, *verified_status)
         else:
-            convert_msg = f"'{video_file}' needs to be converted."
-            logger.info(convert_msg)
+            transcode_msg = f"'{video_file}' needs to be transcoded."
+            logger.info(transcode_msg)
             result = (filename, "Y", "queued")
     return result
 
 
 def retry_failed(sqlite_db: str) -> list:
-    """Retry converting files that failed converting on the first attempt.
+    """Retry transcoding files that failed transcoding on the first attempt.
 
     Args:
         sqlite_db (str): SQLite database file to use.
 
     Returns:
-        list of tuples containing the path and filename of failed conversions.
+        list of tuples containing the path and filename of failed transcoding.
     """
     failed_status_query = "SELECT path, filename FROM queue WHERE status = 'failed';"
 
@@ -368,10 +352,10 @@ def retry_failed(sqlite_db: str) -> list:
             db_cursor.close()
 
     if failed_status_data:
-        failed_results_msg = f"Found {len(failed_status_data)} failed conversion(s)."
+        failed_results_msg = f"Found {len(failed_status_data)} failed transcoding(s)."
         logger.info(failed_results_msg)
     else:
-        logger.info("No failed conversions.")
+        logger.info("No failed transcodings.")
 
     return failed_status_data
 
@@ -412,12 +396,12 @@ def scan_directory(sqlite_db: str) -> None:
         path = result[0]
         filename = result[1]
         if filename.endswith(".mkv"):
-            convert_msg = f"'{path}/{filename}' needs to be converted."
-            logger.info(convert_msg)
+            transcode_msg = f"'{path}/{filename}' needs to be transcoded."
+            logger.info(transcode_msg)
             queue_list.append([path, filename, "Y", "queued"])
         else:
-            filename, convert, status = read_metadata(path, filename)
-            queue_list.append([path, filename, convert, status])
+            filename, transcode, status = read_metadata(path, filename)
+            queue_list.append([path, filename, transcode, status])
     insert_scan_results(sqlite_db, queue_list)
 
 
@@ -445,6 +429,22 @@ def setup_database(sqlite_db: str) -> int:
             cursor.close()
             logger.debug("SQLite database is ready.")
         return 0
+
+
+def transcode_queue(sqlite_db: str, queue_list: list) -> None:
+    """Transcode the list of files.
+
+    Args:
+        sqlite_db (str): SQLite database file to use.
+        queue_list (list): list of tuples containing a path and filename.
+    """
+    for entry in queue_list:
+        path = entry[0]
+        filename = entry[1]
+        video_file = Transcode(sqlite_db, path, filename)
+        transcode_video = video_file.transcode()
+        if (transcode_video == "done") and (DELETE):
+            video_file.delete_original()
 
 
 def update_metadata(sqlite_db: str) -> None:
@@ -483,13 +483,13 @@ def update_metadata(sqlite_db: str) -> None:
                                 check = True,
                                 text = True)
             except subprocess.CalledProcessError:
-                update_metadata_err = f"Invalid MP4 file type for '{video_file}'. Convert to update the metadata."
+                update_metadata_err = f"Invalid MP4 file type for '{video_file}'. Transcode to update the metadata."
                 logger.error(update_metadata_err)
             else:
                 update_metadata_msg = f"Updated metadata for '{video_file}'."
                 logger.info(update_metadata_msg)
         else:
-            file_type_warn = f"'{video_file}' is not MP4. Convert to update the metadata."
+            file_type_warn = f"'{video_file}' is not MP4. Transcode to update the metadata."
             logger.warning(file_type_warn)
 
 
@@ -514,7 +514,7 @@ def update_status(sqlite_db: str, path: str, filename: str, status: str) -> None
         except sqlite3.Error:
             update_query_msg = f"{status_update_data=}"
             logger.debug(update_query_msg)
-            logger.error("SQLite convert status update failed.")
+            logger.error("SQLite transcode status update failed.")
             logger.exception(sqlite3.Error)
         else:
             db_cursor.close()
@@ -555,7 +555,7 @@ def verify_metadata(filename: str) -> tuple:
         filename (str): video file to check its metadata.
 
     Returns:
-        A tuple containing the convert and queue status values.
+        A tuple containing the transcode and queue status values.
     """
     file_type_cmd = ["/usr/bin/exiftool",
                      "-s3", "-DocType",
@@ -566,11 +566,11 @@ def verify_metadata(filename: str) -> tuple:
                                     text = True)
     file_type = file_type_sp.stdout.lower().strip()
     if file_type == "matroska":
-        filetype_mkv_msg = f"'{filename}' is MKV file type, not MP4. Queued for conversion."
+        filetype_mkv_msg = f"'{filename}' is MKV file type, not MP4. Queued for transcoding."
         logger.warning(filetype_mkv_msg)
-        convert_status = ("Y", "queued")
+        transcode_status = ("Y", "queued")
     else:
         filetype_unknown_msg = f"'{filename}' is '{file_type}' type. Status is unknown."
         logger.error(filetype_unknown_msg)
-        convert_status = ("N", "unknown")
-    return convert_status
+        transcode_status = ("N", "unknown")
+    return transcode_status

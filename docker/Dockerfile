@@ -5,11 +5,11 @@ RUN apk update && \
     apk add exiftool ffmpeg mkvtoolnix sqlite x265 x265-libs && \
     pip install python-ffmpeg
 
-COPY ./h265_converter /app/h265_converter
+COPY ./h265_transcoder /app/h265_transcoder
 
-ARG UNAME="convusr"
+ARG UNAME="h265usr"
 
-ARG GNAME="convgrp"
+ARG GNAME="h265grp"
 
 ARG UID=1000
 
@@ -24,8 +24,6 @@ WORKDIR /app
 
 ENV BATCH=0
 
-ENV CONVERT="True"
-
 ENV DEBUG="False"
 
 ENV DELETE="False"
@@ -34,6 +32,8 @@ ENV PERSIST="False"
 
 ENV RETRY_FAILED="False"
 
+ENV TRANSCODE="True"
+
 ENV TZ="UTC"
 
-CMD ["/usr/local/bin/python", "-m", "h265_converter"]
+CMD ["/usr/local/bin/python", "-m", "h265_transcoder"]
