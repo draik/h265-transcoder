@@ -3,7 +3,7 @@
 ## Description
 Scan a directory for video files that need to be transcoded to h.265 HVC1 MP4 format, and process the findings. These are possible scan results:
 
-* MKV (transcode) - All MKV will be transcoded to MP4 even if it's h.265 HVC1
+* AVI/M4V/MKV (transcode) - All files will be transcoded to MP4 even if it's h.265 HVC1
 * MP4 (transcode) - Transcode MP4 if not h.265 HVC1
 * MP4 (skip) - MP4 is already h.265 HVC1
 

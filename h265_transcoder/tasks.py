@@ -15,6 +15,9 @@ from h265_transcoder.interfaces import DatabaseInterface
 logger = logging.getLogger("app")
 BATCH = os.getenv("BATCH", "0")
 DELETE = bool(os.environ["DELETE"].lower() == "true")
+SUPPORTED_TYPE = {".avi": "video/x-msvideo",
+                  ".m4v": "video/mp4",
+                  ".mkv": "video/x-matroska"}
 
 
 class Transcode:
@@ -31,10 +34,11 @@ class Transcode:
         self.path = path
         self.filename = filename
         self.input_file = f"{self.path}/{self.filename}"
-        if self.filename.endswith(".mkv"):
-            self.output_file = self.input_file.replace(".mkv", ".mp4")
-            self.video_title = self.filename.removesuffix(".mkv")
-        elif self.filename.endswith(".mp4"):
+        file_extension = Path(self.filename).suffix
+        if file_extension in list(SUPPORTED_TYPE.keys()):
+            self.output_file = self.input_file.replace(file_extension, ".mp4")
+            self.video_title = self.filename.removesuffix(file_extension)
+        elif Path(self.filename).suffix == ".mp4":
             self.output_file = self.input_file.replace(".mp4", ".h265")
             self.video_title = self.filename.removesuffix(".mp4")
 
@@ -129,13 +133,13 @@ class Transcode:
     def delete_original(self) -> None:
         """Remove the original input file.
 
-        MKV transcoding outputs to MP4 file, and the original MKV will be deleted.
         MP4 transcoding outputs to ".h265" MP4, which will overwrite the ".mp4" file.
+        Other transcoding outputs to MP4 file, and the original file will be deleted.
         """
-        if self.input_file.endswith(".mkv"):
+        if Path(self.input_file).suffix in list(SUPPORTED_TYPE.keys()):
             Path(self.input_file).unlink()
             cleanup_msg = f"Deleted '{self.input_file}'."
-        elif self.input_file.endswith(".mp4"):
+        elif Path(self.input_file).suffix == ".mp4":
             Path(self.output_file).replace(self.input_file)
             cleanup_msg = f"Renamed '{self.output_file}' to '{self.input_file}'."
         logger.info(cleanup_msg)
@@ -373,14 +377,14 @@ def scan_directory(sqlite_db: str) -> None:
         List of tuples containing the absolute path and filename.
     """
     scan_path = "/mnt"
-    video_extensions = (".mkv", ".mp4")
+    video_extensions = [*list(SUPPORTED_TYPE.keys()), ".mp4"]
     video_list = []
     queue_list = []
 
     logger.info("Beginning scan...")
     for root, _dirs, files in os.walk(scan_path):
         for filename in files:
-            if filename.endswith(video_extensions):
+            if Path(filename).suffix in video_extensions:
                 video_list.append((root, filename))
                 found_msg = f"Found '{root}/{filename}'."
                 logger.info(found_msg)
@@ -395,7 +399,7 @@ def scan_directory(sqlite_db: str) -> None:
     for result in video_list:
         path = result[0]
         filename = result[1]
-        if filename.endswith(".mkv"):
+        if Path(filename).suffix in list(SUPPORTED_TYPE.keys()):
             transcode_msg = f"'{path}/{filename}' needs to be transcoded."
             logger.info(transcode_msg)
             queue_list.append([path, filename, "Y", "queued"])
@@ -470,7 +474,7 @@ def update_metadata(sqlite_db: str) -> None:
         path = file[0]
         filename = file[1]
         video_file = f"{path}/{filename}"
-        if filename.endswith(".mp4"):
+        if Path(filename).suffix == ".mp4":
             try:
                 video_title = filename.removesuffix(".mp4")
                 update_metadata_cmd = ["/usr/bin/exiftool",
@@ -558,19 +562,19 @@ def verify_metadata(filename: str) -> tuple:
         A tuple containing the transcode and queue status values.
     """
     file_type_cmd = ["/usr/bin/exiftool",
-                     "-s3", "-DocType",
+                     "-s3", "-MIMEType",
                      filename]
     file_type_sp = subprocess.run(file_type_cmd,
                                     capture_output = True,
                                     check = True,
                                     text = True)
     file_type = file_type_sp.stdout.lower().strip()
-    if file_type == "matroska":
-        filetype_mkv_msg = f"'{filename}' is MKV file type, not MP4. Queued for transcoding."
-        logger.warning(filetype_mkv_msg)
+    if file_type in list(SUPPORTED_TYPE.values()):
+        filetype_msg = f"'{filename}' is queued for transcoding."
+        logger.warning(filetype_msg)
         transcode_status = ("Y", "queued")
     else:
-        filetype_unknown_msg = f"'{filename}' is '{file_type}' type. Status is unknown."
+        filetype_unknown_msg = f"'{filename}' is unsupported '{file_type}' type. Skipped."
         logger.error(filetype_unknown_msg)
         transcode_status = ("N", "unknown")
     return transcode_status

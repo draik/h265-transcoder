@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## [0.11.0] Add AVI and M4V Video File Support
+**DATE**: 2025-07-29
+- README: Update support for AVI and M4V support
+- tasks: Add support for AVI and M4V files.  
+  Change usage of `str.endswith()` to `Path().suffix` for modern, cleaner syntax.
+
 ## [0.10.0] Rename Convert to Transcode and Add Transcode Log Level
 **DATE**: 2024-10-06
 - REPOSITORY: updated usage of "convert" to "transcode" for correct description.  

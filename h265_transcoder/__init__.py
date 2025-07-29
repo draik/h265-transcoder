@@ -1,4 +1,4 @@
 __author__ = "Draik"
-__date__ = "2024-10-06"
+__date__ = "2025-07-29"
 __status__ = "production"
-__version__ = "0.10.0"
+__version__ = "0.11.0"
