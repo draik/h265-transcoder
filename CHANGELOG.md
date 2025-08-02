@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## [0.11.1] Update Python-Alpine Base Docker Image
+**DATE**: 2025-08-02
+- Docker: update `python:3.12-alpine3.20` to `python:3.12-alpine` as base image.
+
 ## [0.11.0] Add AVI and M4V Video File Support
 **DATE**: 2025-07-29
 - README: Update support for AVI and M4V support

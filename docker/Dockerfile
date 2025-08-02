@@ -1,4 +1,4 @@
-FROM python:3.12-alpine3.20
+FROM python:3.12-alpine
 
 RUN apk update && \
     apk upgrade && \
@@ -37,3 +37,4 @@ ENV TRANSCODE="True"
 ENV TZ="UTC"
 
 CMD ["/usr/local/bin/python", "-m", "h265_transcoder"]
+
