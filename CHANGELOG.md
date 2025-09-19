@@ -1,5 +1,13 @@
 # CHANGELOG
 
+## [0.12.0] Add Transcoding Arguments, Progress Bar Formatting, and Base Image Update
+**Date**: 2025-09-19
+- README: add information about a known issue with an invalid directory path to mount.
+- Docker: update the `python:3.12-alpine` base image for `draikx21/h265-transcoder` image.
+- tasks: add `map_chapters: -1` to remove chapters in the transcoded output file.  
+  Add `sn` to remove any subtitles in the transcoded output file.  
+  Format the progress bar output for improved readability.
+
 ## [0.11.1] Update Python-Alpine Base Docker Image
 **DATE**: 2025-08-02
 - Docker: update `python:3.12-alpine3.20` to `python:3.12-alpine` as base image.

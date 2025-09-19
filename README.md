@@ -91,3 +91,6 @@ Logging: Ideally, this is for troubleshooting purposes. The file will continue t
 ### Known Error
 ***returned non-zero exit status 243***  
 When setting the user's UID and GID in the *docker-compose.yaml* file or running a container manually, if it is not a valid UID on the host, the `subprocess.run()` execution will create exceptions, and the exit status 243.
+
+***directory created from invalid mount path***  
+When entering the local mount point for the container's `/mnt` volume, a typo in the directory path will create the directory, if local permissions allow. For example, if entering the path for "Some Series" is invalid, e.g. `/media/shows/Soem Series:/mnt`, it will create the directory with the invalid name ("Soem Series") if the local user has write permissions to create the directory.

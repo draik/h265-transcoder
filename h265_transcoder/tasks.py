@@ -68,7 +68,9 @@ class Transcode:
                                     f"title={self.video_title}",
                                     "comment="
                                  ],
-                    "f": "mp4"
+                    "f": "mp4",
+                    "map_chapters": "-1",
+                    "sn": None
                 }
             )
         )
@@ -80,24 +82,25 @@ class Transcode:
 
         @ffmpeg.on("progress")
         def on_progress(progress: Progress):
+            filename = self.filename
             frame = progress.frame
             fps = int(progress.fps)
-            size = (str(progress.size) + "B")
+            size = progress.size
             try:
                 seconds = datetime.datetime.strptime(str(progress.time), "%H:%M:%S.%f")
             except ValueError:
                 seconds = datetime.datetime.strptime(str(progress.time), "%H:%M:%S")
             time = seconds.strftime("%H:%M:%S.") + str(seconds.strftime("%f"))[:2]
-            bitrate = str(progress.bitrate) + "kb/s"
-            speed = (str(progress.speed) + "x")
+            bitrate = progress.bitrate
+            speed = progress.speed
             progress_bar = (
-                f"File={self.filename} "
-                f"Frame={frame} "
-                f"FPS={fps} "
-                f"Size={size} "
-                f"Time={time} "
-                f"Bitrate={bitrate} "
-                f"Speed={speed}"
+                f"File={filename} "
+                f"Frame={frame:>6} "
+                f"FPS={fps:>2} "
+                f"Size={size:>9}B "
+                f"Time={time:>11} "
+                f"Bitrate={bitrate:>6}kb/s "
+                f"Speed={speed:0<4}x"
             )
             logger.transcode(progress_bar)
 
