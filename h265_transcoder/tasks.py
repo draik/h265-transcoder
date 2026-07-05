@@ -43,6 +43,11 @@ class Transcode:
             self.video_title = self.filename.removesuffix(".mp4")
 
 
+    def queue(self) -> str:
+        """Display the current queue status for the progress bar."""
+        pass
+
+
     def transcode(self) -> str:
         """Transcode the video file to h.265 HVC1 MP4.
 
@@ -87,9 +92,9 @@ class Transcode:
             fps = int(progress.fps)
             size = progress.size
             try:
-                seconds = datetime.datetime.strptime(str(progress.time), "%H:%M:%S.%f")
+                seconds = datetime.datetime.strptime(str(progress.time), "%H:%M:%S.%f")  # noqa: DTZ007
             except ValueError:
-                seconds = datetime.datetime.strptime(str(progress.time), "%H:%M:%S")
+                seconds = datetime.datetime.strptime(str(progress.time), "%H:%M:%S")  # noqa: DTZ007
             time = seconds.strftime("%H:%M:%S.") + str(seconds.strftime("%f"))[:2]
             bitrate = progress.bitrate
             speed = progress.speed
@@ -111,7 +116,7 @@ class Transcode:
         except FFmpegError:
             transcode_status = "failed"
             transcode_err_msg = f"Failed to transcode '{self.input_file}'"
-            logger.error(transcode_err_msg)
+            logger.exception(transcode_err_msg)
             if Path(self.output_file).exists():
                 logger.debug("Removing the failed output file.")
                 Path(self.output_file).unlink()
@@ -170,7 +175,7 @@ def final_results(sqlite_db: str) -> None:
             failed_result = db_cursor.execute(failed_query)
             failed_data = failed_result.fetchall()
         except sqlite3.Error:
-            logger.error("SQLite status query failed.")
+            logger.exception("SQLite status query failed.")
             logger.exception(sqlite3.Error)
         else:
             db_cursor.close()
@@ -203,7 +208,7 @@ def get_batch(sqlite_db: str) -> list:
         batch = int(BATCH)
     except ValueError:
         value_error_msg = f"BATCH is not an integer. {BATCH=}."
-        logger.error(value_error_msg)
+        logger.exception(value_error_msg)
         logger.info("Setting batch to unlimited.")
         limit = None
     else:
@@ -231,7 +236,7 @@ def get_batch(sqlite_db: str) -> list:
             batch_result = db_cursor.execute(batch_query)
             batch_queue = batch_result.fetchall()
         except sqlite3.Error:
-            logger.error("SQLite transcode selection query failed.")
+            logger.exception("SQLite transcode selection query failed.")
             logger.exception(sqlite3.Error)
             raise SystemExit(1) from sqlite3.Error
         else:
@@ -283,9 +288,9 @@ def insert_scan_results(sqlite_db: str, insert_list: list) -> None:
         try:
             db_cursor.executemany(insert_statement, insert_list)
         except sqlite3.IntegrityError:
-            logger.error("Duplicate filename found in SQLite table.")
+            logger.exception("Duplicate filename found in SQLite table.")
         except sqlite3.Error:
-            logger.error("SQLite insert execution failed.")
+            logger.exception("SQLite insert execution failed.")
             logger.exception(sqlite3.Error)
             raise SystemExit(1) from sqlite3.Error
         else:
@@ -318,7 +323,7 @@ def read_metadata(path: str, filename: str) -> tuple:
         compressor_metadata = metadata_sp.stdout.lower().strip()
     except subprocess.CalledProcessError:
         non_video_msg = f"'{video_file}' is not a not a video file. Verify file type."
-        logger.error(non_video_msg)
+        logger.exception(non_video_msg)
         result = (filename, "N", "unknown")
     else:
         if compressor_metadata == "hvc1":
@@ -353,7 +358,7 @@ def retry_failed(sqlite_db: str) -> list:
             failed_status_result = db_cursor.execute(failed_status_query)
             failed_status_data = failed_status_result.fetchall()
         except sqlite3.Error:
-            logger.error("SQLite status query failed.")
+            logger.exception("SQLite status query failed.")
             logger.exception(sqlite3.Error)
         else:
             db_cursor.close()
@@ -428,7 +433,7 @@ def setup_database(sqlite_db: str) -> int:
             create_table = db_schema.read()
     except FileNotFoundError:
         file_not_found_msg = f"Schema file not found. Expected: '{schema_file}'."
-        logger.error(file_not_found_msg)
+        logger.exception(file_not_found_msg)
         raise SystemExit(1) from FileNotFoundError
     else:
         with DatabaseInterface(sqlite_db) as (connection, cursor):
@@ -466,7 +471,7 @@ def update_metadata(sqlite_db: str) -> None:
             metadata_result = db_cursor.execute(metadata_query)
             metadata_queue = metadata_result.fetchall()
         except sqlite3.Error:
-            logger.error("SQLite metadata query failed.")
+            logger.exception("SQLite metadata query failed.")
             logger.exception(sqlite3.Error)
             raise SystemExit(1) from sqlite3.Error
         else:
@@ -491,7 +496,7 @@ def update_metadata(sqlite_db: str) -> None:
                                 text = True)
             except subprocess.CalledProcessError:
                 update_metadata_err = f"Invalid MP4 file type for '{video_file}'. Transcode to update the metadata."
-                logger.error(update_metadata_err)
+                logger.exception(update_metadata_err)
             else:
                 update_metadata_msg = f"Updated metadata for '{video_file}'."
                 logger.info(update_metadata_msg)
@@ -521,7 +526,7 @@ def update_status(sqlite_db: str, path: str, filename: str, status: str) -> None
         except sqlite3.Error:
             update_query_msg = f"{status_update_data=}"
             logger.debug(update_query_msg)
-            logger.error("SQLite transcode status update failed.")
+            logger.exception("SQLite transcode status update failed.")
             logger.exception(sqlite3.Error)
         else:
             db_cursor.close()
@@ -545,7 +550,7 @@ def verify_database() -> int:
             queue_result = db_cursor.execute(query_queue)
         except sqlite3.Error:
             verification_err_msg = f"SQLite database verification failed for '{sqlite_db}'."
-            logger.error(verification_err_msg)
+            logger.exception(verification_err_msg)
             raise SystemExit(1) from sqlite3.Error
         else:
             result = queue_result.fetchall()[0][0]

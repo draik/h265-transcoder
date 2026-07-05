@@ -1,0 +1,7 @@
+[project]
+name = "h265-transcoder"
+version = "0.13.0"
+description = "Transcode Media to H.265 HVC1"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = []

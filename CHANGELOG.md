@@ -1,5 +1,13 @@
 # CHANGELOG
 
+## [0.13.0] Add uv, and Update Base Image
+**Date**: 2026-07-04
+- Project: add `uv` for project management.
+- Docker: update the `python:3.12-alpine` base image for the application.
+- tasks: update exception logging from "error" to "exception" type.  
+  Disable DTZ007, timezone set at docker build.
+
+
 ## [0.12.0] Add Transcoding Arguments, Progress Bar Formatting, and Base Image Update
 **Date**: 2025-09-19
 - README: add information about a known issue with an invalid directory path to mount.

@@ -15,7 +15,23 @@ Once the container starts, it scans the mounted volume for video files to transc
 
 During the transcoding process, the output file will have the *Title* metadata updated to match the filename (without extension), and the *Comment* tag removed.
 
-![Workflow diagram](workflow_diagram.png)
+```mermaid
+---
+config:
+  theme: dark
+  look: classic
+---
+flowchart TB
+    A["Start Docker container"] --> B("Scan Volume")
+    B --> C{"Files to convert?"}
+    B -. No mounted volume .-> E["Stop Docker container"]
+    C -- Yes --> D("convert")
+    C -- No --> E
+    D -- Done --> C
+    D -.- F("Delete original")
+
+    style F stroke-width:2px,stroke-dasharray: 2
+```
 
 ## Docker
 
